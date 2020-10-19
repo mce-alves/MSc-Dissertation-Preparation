@@ -1,0 +1,364 @@
+Slides from ASD - (Algorithms and Distributed Systems 2019/2020 - MIEI - João Leitão - jc.leitao@fct.unl.pt)
+
+What is a distributed system?
+* A distributed system is one in which the failure of a computer you didn't even know existed can render your own computer unusable.
+  + Our goal is to make this definition false!
+* A distributed system is composed by a set of processes that are interconnected through some network where processes seek to achieve some form of cooperation to execute tasks.
+
+Why do we want to distribute things?
+* Fault Tolerance -> if our system has N machines, and x (x > N) fails, then my system can still operate.
+  + It is necessary to consider what to do when a machine fails (and they will)
+* Concurrency -> more machines means (if the operations are parallelizable) more processing / storage power making our system faster.
+  + It is necessary to consider possible orderings of events.
+
+The Model of a Distributed System
+* Composed of Processes - computational elements (abstract the notion of machine/node)
+  + Processes are fully independent, meaning that they do not share memory in any way.
+  + There is a clear necessity for cooperation to exchange information.
+* Network - a graph(V, E) where V are the set of processes, and E are the communication channels between processes.
+* Communication
+  + Processes communicate through the exchange of messages
+  + Notation: send_i(j, m, arg1, arg2, ..., argn) -> process i sends message m with args(...) to process j.
+* Timing assumptions
+  + Synchronous system:
+    -> one assumes that there is a known upper bound to the time required to deliver a message through the network and for a process to make all computations related with the processing of the message
+    -> in these systems, we can detect when a process fails (in some models)
+    -> in these systems, we can have protocols that evolve in synchronous steps
+  + Asynchronous system:
+    -> there are no assumptions about the time required to deliver a message or to process a message
+    -> in these systems, there are some problems that actually have no solution
+  + Partially Synchronous Model
+    -> the system is considered to be asynchronous but it is assumed that eventually (meaning for sure at some time in the future that is unknown) the system will behave in a synchronous way for long enough.
+
+
+Internal Model of the Process
+* each process has a unique identifier
+* internally, each process has (classical model):
+  + a set of states
+  + an initial state(s)
+  + inputs and outputs are special state variables (allow the process to get information from outside and export internal information to the outside)
+  + fundamentally, a process is a deterministic automaton
+
+Transition between States 
+* Synchronous Model: Execution in rounds. Each round the process will:
+  + receive messages from all processes
+  + process messages to determine which messages are generated
+  + send messages to all processes 
+  + apply trans_i to determine the next state
+* Asynchronous Model: Execution is not based on rounds. Since there is no notion of rounds:
+  + a transition of state is triggered by the reception of a single message (notice that the transition can be to the same state)
+  + transitioning to a state (even if the same) can trigger the generation (and transmission) of a new set of messages
+
+Fault Model
+* Faults make processes deviate from their expected behaviour. Classical model: Fault(Error(Failure))
+  + Example:
+    -> sector in hard disk is damaged (fault)
+    -> sector is accessed (error)
+    -> file is lost (failure)
+  + This classical model usually has recursive implication. The failure in one component might imply a fault in another component.
+    -> the failure of the file system (file damaged) might lead to a fault in the load of the operating system, which might result in the failure of the operating system.
+
+Process Fault Model
+* A process that never fails, is considered correct.
+* Correct processes never deviate from their expected behaviour
+  + it executes the algorithm as expected and sends all messages prescribed by it
+* Failed processes might deviate from their prescribed behaviour in different ways
+  + the unit of failure is the process, meaning that when it fails, all its components fail at the same time
+* The possible behaviours of a process that fails is defined by the process fault model
+* Crash Fault Model 
+  + When a process fails it stops sending any messages (from that point onward)
+  + This is the fault model that we will consider most of the times
+* Omission Fault Model 
+  + A process that fails omits the transmission (or reception) of any number of messages
+* Fail-Stop Model 
+  + Similar to the crash model, except that upon failure the process "notifies" all other processes of its own failure
+* Byzantine (or Arbitrary) Fault Model
+  + A failed process might deviate from its protocol in any way (duplicate messages, invalide messages, changing values received by other processes, etc.)
+    -> can capture memory corruption or software bugs; a malicious attack controls the process
+
+Network Model
+* Captures the assumptions made concerning the links that interconnect processes. Namely it captures what can go wrong in the netwrok regarding:
+  + lost of messages sent between processes
+  + possibility of duplication of messages
+  + possibility of corruption of messages
+    -> the network is usually not our friend
+* Fair Loss Model
+  + A model that captures the possibility of messages being lost, albeit in a fair way. Properties:
+    -> FL1 (fair-loss): Considering two correct processes i and j; if i sends a message to j infinite times, then j delivers the message infinite times.
+    -> FL2 (finite duplication): Considering two correct processes i and j; if i sends a message m to j a finite number of times, then j cannot deliver m infinite times.
+    -> FL3 (no creation): if a correct process j delivers a message m, then m was sent to j by some process i.
+* Stubborn Model
+  + A stronger model that assumes that processes communicate in a stubborn way. Properties:
+    -> SL1 (stubborn delivery): Considering two correct processes i and j; if i sends a message to j, then j delivers the message an infinite number of times.
+    -> SL2 (no creation): If a correct process j delivers a message m, then m was sent to j by some process i.
+* Perfect Link Model (also called Reliable)
+  + A stronger model that assumes the links between processes are well behaved. Properties:
+    -> PL1 (reliable delivery): considering two correct processes i and j; if i sends a message to j, then j eventually delivers m.
+    -> PL2 (no duplication): No message is delivered by a process more than once.
+    -> PL3 (no creation): If a correct process j delivers a message m, then m was sent to j by some process i.
+* Real networks are closer to the fair-loss model, but its frequent to use the perfect link model since it makes it easier to reason about algorithm design.
+
+Algorithms Specification and Properties
+* Algorithms also provide a set of properties. We think in terms of properties because algorithms are composable, and the design of an algorithm depends on the underlying properties provided by other algorithms.
+* These properties capture:
+  + the correctness criteria for the algorithm (and for any implementation of that algorithm)
+  + it defines restrictions to (all) valid executions of the algorithm
+  + two fundamental types of properties:
+    -> safety
+       - conditions that must be enforced at any (and all) point of the execution. Intuitively, bad things that should never happen.
+    -> liveness
+       - conditions that should be enforced at some point in the execution (but not necessarily always). Intuitively, good things that should happen eventually.
+* Correct algorithms will have both safety and liveness properties. Some properties however are hard to classify within one of these classes, and they might mix aspects of safety and liveness (usually they can be decomposed).
+
+Reliable Broadcast Problem
+* Required properties:
+  + RB1 (validity) - if a correct process i broadcasts message m, then i eventually delivers the message.
+  + RB2 (no duplication) - no message is delivered more than once.
+  + RB3 (no creation) - if a correct process j delivers a mesage m, then m was broadcast to j by some process i.
+  + RB4 (agreement) - if a message m is delivered by some correct process i, then m is eventually delivered by every correct process j.
+* Pseudo-Code in https://www.gsd.inesc-id.pt/~ler/docencia/tfd0304/bib/RBTutorial.pdf (page 20) with explanation.
+* Another solution (somewhat similar) is in the slides of lecture 2 of ASD
+
+Simple Gossip Algorithm
+* When a process wants to broadcast a message it picks T other processes from the system.
+* These processes are selected uniformly at random. It then sends the message to these processes.
+* When a process receives a message for the first time, it simply repeats this process (eventually avoiding to send the message back to the sender).
+* To ensure high probability (not necessarily 100% guaranteed) that everyone receives the message, T >= ln(num_processes). T is usually named the fanout of the algorithm.
+* Gossip algorithms do involve some redundancy, which is good because we are operating on top of fair loss links. On average, each process will receive the message T times (from different processes).
+* There are different ways to gossip (with different advantages and disadvantages):
+  + (Eager) Push Gossip -> just straight up send the message.
+    -> fast
+    -> expensive if the messages are big
+  + Pull Gossip -> the receiver asks a possible sender (T) if he has a message. If the sender does have a message, it proceeds to sent it.
+    -> less network traffic if messages are big
+    -> slow 
+    -> more network traffic is messages are small
+  + Lazy Push Gossip -> sender sends message id to receiver. If receiver hasn't received it yet, he asks for the message with the corresponding message id. Sender then sends the message.
+    -> faster than pull 
+    -> more communication steps 
+    -> more netwrok traffic if messages are small
+
+Why should we avoid a global known membership?
+* The previous algotihms assume a know membership - each process has to know all other processes.
+* We should avoid it because in large systems, the processes are not static. New processes might be added (i.e to deal with additional load / scalability); processes might have to leave due to failures or due to lack of necessity. Therefore the cost to keep this information always up-to-date might be too expensive.
+
+Partial View Membership System
+* Each process in the system knows (a few) other processes in the system.
+* This will generate a (virtual) network on top of the physical netwrok. This is called an overlay network.
+
+Overlay Network
+* Nodes define (application level, logical) neighbouring relationships.
+* Correctness properties:
+  + Connectivity - there must be a path connecting any correct process p to every other correct process v.
+  + Accuracy - eventually, no correct process p will have an overlay link to a failed process.
+* Efficiency properties:
+  + Low diameter - paths between correct processes should be small (measured by the average shortest path)
+  + Low clustering - the neighbours of each process should be as different as possible from the neighbours of each of its neighbours
+  + Uniform degree - all processes should have a similar number of neighbours (degree)
+* Random Overlay Network - nodes extablish random neighbouring relationships
+
+How to execute a Gossip algorithm on top of a membership asbtraction like this (overlay network)?
+* The algorithm that maintains the overlay exposes a request whose indication lists the overlay neighbours of the local process.
+* Instead of picking up T random processes out of N, you pick T random processes out of your logical neighbours.
+* Case Study - CYCLON inexpensive membership management for unstructured P2P overlays (Cyclon-Pseudo Code.pdf in the praticas/artigos folder)
+  + When a new process joins it has to know the identifier of another process already in the system (contact)
+  + Process identifiers are enriched with a counter (age) that state how long ago the identifier was created
+  + Preiodically, each process picks the process identifier that is among the oldest of its partial view and sends a sample of its neighbours alongside a new identifier for itself (age=zero)
+  + The other side replies with a sample of its own neighbours
+  + Both processes integrate the information received from their peer, removing identifiers that it sent to the peer (and random ones if required)
+
+Unstructured Overlay Networks 
+* Main properties:
+  + random topology
+  + low maintenance cost
+  + evetual global consistency
+* Why is this useful?
+  + message dissemination (broadcast)
+  + replication of data across a large number of nodes
+  + monitoring
+  + resource location
+
+Resource Location 
+  * Given a set of processes containing different sets of resources, locate the processes that contain resources with a given set of properties.
+  * One possible concretization:
+    - file sharing applications
+    - processes own a set of files that have properties
+    - locate the processes (and files) that match a given set of criteria (extension = .mkv, size > 1Gb, etc.)
+  * One possible gossip variant is flooding - propagate the query for the resource location to all nodes
+    - the problem is that it generates too many messages, running the risk of overloading the processes
+  * Two possible solutions
+    - Flooding with a limited horizon
+    - Super-Peer Networks
+* Flooding with a limited horizon
+    + when a query message is disseminated, it carries a value (eg. hopCount) that is initially set to zero
+    + this value is incremented whenever the message is retransmitted
+    + processes stop forwarding the message when the hopCount value reaches a given threshold
+    + advantages - most messages are generated later in the dissemination
+    + disadvantages - you no longer have the guarantee of finding all relevant resources
+* Super-Peers 
+    + a small fraction of processes (those that have more resources, are more powerfull, or simply more stable) are promoted to Super-Peers
+    + Super-Peers form an unstructured overlay among them
+    + regular processes connect to a super-peer and transmit to it the index of its resources
+    + queries are forwarded to the super-peer and then disseminated only among super-peers 
+    + advantages - significantly reduces the amount of messages
+    + disadvantages - how do you decide which process should be a super-peer? Load in the system is highly unbalanced
+* Resource Location (Exact Match)
+  + given a set of processes containing different sets of resources, locate the processes that contain a given resource given its unique identifier
+* Consistent Hashing
+  + we can build a distributed index of resources among all processes by doing the following
+  + we pick a hash function that generates hash values in the invertal
+  + we attribute to each process an identifier within the interval (all processes must have a different identifier)
+  + for each resource in the system, we compute the hash of its identifier, and store information about it in the process with the closest identifier
+    - this means that the resource with hash 10 can be stored in a process with hash 188, but the process with hash closest to 10 knows that the resource is in process 188
+  + consistent hashing leverages the fact that independent processes will obtain the same value when applying a hash function to the same arbitrary input
+  + When we have the full membership (every process knows all other processes) this allows us to build a One-Hop Distributed Hash Table
+  + One-Hop DHTs are one of the foundations of many modern NoSQL Datastores such as cassandra, dynamo, mongodb
+* Problem with One-Hop DHTs
+  + full membership implies that every process has to know all other processes, if the system is large, changes in the membership might be frequent, and the cost to keep this information up-to-date becomes too expensive
+  + the solution is to use partial views (Cyclon, HyParView, etc.)
+  + caviat is then the need to EFFICIENTLY find a process given its identifier
+
+Structured Overlay Networks
+* An overlay network is composed of logical links between processes, whose topology has properties known a-priori
+* Many times, these properties are related with the identifiers of nodes (but there are exceptions)
+* The most common overlay topology in structured overlay networks are rings, that connect nodes in order considering their identifiers
+  + this is not good enough, because there will be long paths between processes
+  + so we add some additional overlay links, in the order of log(N) to speed up things
+    - now we have information to deal with faults
+    - we can reach any other process in a logarithmic number of hops (i can always reduce in half the distance to my target at each hop)
+  + there are a few relevant examples
+    - Chord - read more about this ?
+    - Pastry
+    - Kadmelia
+* Tree-based oberlay networks
+  + good to disseminate messages with low overhead
+  + also good to aggregate information 
+
+Overview of Overlays 
+* Unstructured (or random)
+  + easy to build and maintain
+  + robust to failures (any failed process can be raplaced by any other failed process)
+  - limited efficiency for some use cases (locate a particular object or process for instance)
+* Structured
+  + provides efficiency for particular types of applications (application-level routing, exact-search, broadcast)
+  - less robust to failures (a failed process can only be replaced - in another process partial view - by a limited number of other processes)
+  - somewhat more complex algorithms
+
+Why are these things relevant / useful nowadays?
+* We live in the Internet of Things / Edge Computing eras, and these algorithms / protocols can be useful there.
+
+Replication Model 
+* A process has a given state S, and a set of operations that return or modify the state (read and write operations, respectively)
+* The process (logic) is replicated, meaning that there are multiple copies. Lets assume that the set of all replicas is known and static: PI and that #PI=N.
+* Clients (processes outside the set PI) invoke operations over the system
+
+Replication Algorithm (or Protocol)
+* A replication algorithm is responsible for managing the multiple replicas of the process 
+  + under a given fault model
+  + under a given synchrony model 
+* In its essence the replication algorithm will enforce properties over what are the effects of operations observed by clients given the story of the system (and potentially the story of the client issuing a particular operation)
+* High level aspects:
+  + Transparency - the client is not aware that multiple replicas exist. In fact clients only observe a single logical state (or collection of data objects) and are fully unaware of the existance of multiple copies
+    -> Client interacts with proxy, and proxy interacts with replicas
+    -> Client interacts with one replica, and that replica interacts with the other ones
+  + Consistency - despite the individual state of each replica, enforcing consistency implies reestricting the state that can be observed by a client given its past (operations executed by that client) and the system history (operations executed previously by any client)
+
+Replication Strategies
+* First Dimension
+  + Active replication - operations are executed by all replicas
+    -> all replicas execute operations 
+    -> state is continuously updated at every replica, which might lower the impact of a replica failure 
+    -> can only be used when operations are deterministic (they do not depend from non-deterministic variables, such as local time, or generating a random value)
+    -> if operations are not commutative (executions of the same set of operations in different orders leads to different results) then, all replicas must agree on the order in which operations are executed 
+  + Passive replication - operations are executed by a single replica, results are shipped to other replicas
+    -> only one replica executes operations 
+    -> other replicas are only informed of results (to update their local state)
+    -> good when operations depend on non-deterministic data or inputs (random numer, local replica time, etc.)
+    -> load across replicas is not balanced (only one replica effectively executes the operation and computes the result, other replicas only observe results - for write operations)
+* Second Dimension
+  + Synchronous replication - replication takes place before the client gets a response 
+    -> replicas are updated before replying to the client 
+    -> notice that a client operation is only considered as complete after the client obtains a reply from the system 
+    -> this can delay (significantly) the response times of the system (client experiences higher latency) leading to a lower overall performance
+    -> when a client obtains the answer, it is easier to guarantee that the effects of her operation are not going to be lost
+  + Asynchronous replication - replication takes place after the client gets a response 
+    -> replicas are updated sometime after the client obtains a reply (or concurrently with the reply being sent to the client)
+    -> clients will obtain replies more quickly (no need to wait for more than one replica to update their state), which promotes better performance overall 
+    -> effects of client operations may be lost, even if he got a reply, for instance due to the failure of replicas
+* Third Dimension
+  + Single master (AKA master-slave) - a single replica receives operations that modify the state from clients
+    -> only a single replica, named the master, processes operations that modify the state (write operations)
+    -> other replicas might process client operations that only observe the state (read operations), leading clients to potentially observe stale values (depends on consistency guarantees enforced by the system)
+    -> when the master fails, one of the secondary replicas must take over the role of master
+    -> if two processes believe themselves to be master, safety properties might be compromised
+  + Multi-Master - any replica can process any operation
+    -> any replica can process any operation issued by a client (both read and write)
+    -> all replicas behave in the same way, which implies better load balancing
+    -> adding more replicas can increase the overall capacity of the system to process client operations 
+    -> multiple replicas might attempt to do conflicting operations at the same time, chich requires some for of coordination (distributed locks or other coordination protocols that typically are expensive)
+
+A simplistic replication algorithm 
+* Register replication 
+  + a set of processes own a register, which stores a single value (lets assume a positive integer value) intially set to zero 
+  + processes have two operations read and write 
+  + each process has its own local copy of the register, but the register is shared among all of them 
+  + processes invoke operations sequentially (each process executes one operation at a time)
+  + values written to the register are uniquely identified (eg, the id of the process performing the write and timestamp or some monotonic [sequence] value)
+* Properties 
+  + Liveness - every operation of a correct process eventually completes 
+  + Safety - every read operation returns the last value written 
+
+Quorum Based Replication 
+* Replication algorithms that are based on quorums execute operations over a large-enough replica set such that any two concurrent operations will have a non-empty intersection 
+* If any pair of operations executed in the lifetime of the system has a non-empty intersection in the set of replicas executing it, we call this a quorum system
+* Given a set of replicas P, we define a Read-Write Quorum System as a pair of sets R and W of subsets of P such that, reads r from R always intersects writes w from W.
+  + One possible benefit is allowing for potentially smaller read quorums, which is important for making read operations faster (in systems where read operations are much more frequent)
+
+Quorum Types 
+* Read one / write all 
+  + read operations can be executed in any (and a single) replica 
+  + write operations must be executed in all replicas 
+  + properties:
+    -> very fast read operations 
+    -> heavy write operations. If a single replica fails, then write operations can no longer be executed successfully
+* Majority 
+  + every operation (either read or write) must be executed across a majority of replicas (>N/2)
+  + properties: 
+    -> best fault tolerance possible from a theoretical point of view (can tolerate up to f faults with N>=2f+1)
+    -> read and write operations have a similar cost
+* Weighted Voting
+  + a replication strategy based on read-write quorum system where:
+    -> to each replica i, it is assigned a weight, defining also the weight required for performing a read, and the weight required for performing a write 
+    -> a read quorum can be composed by any subset of replicas such that the sum of their weights is >= than the weight needed to perform a read 
+    -> ^^ similar thing for write quorum 
+  + properties:
+    -> this allows to balance the size of different quorums for different read and write operations 
+    -> replicas are no longer completely equivalent among them 
+* Grid 
+  + processes are organized (logically) in a grid such that:
+    -> read quorum : one element from each line 
+    -> write quorum : full line + one element from each of the lines below that one 
+  + properties: 
+    -> size of quorums grows sub-linearly with the total number of replicas in the system
+    -> it allows to balance the dimension of read and write quorums (for instance to deal with different rates of each type of request) by manipulating the size of the grid 
+    -> somewhat more complex to use
+
+Homework v2:
+* Interface
+  + request: cPropose(v) (v is some value, there is some mechanism where all processes in the system will receive simultaneously a request of this type, but potentially with different values of v from process to process).
+  +  notification: cDecide(v) (this notification should only be triggered once by each process in the system, when a process triggers this notification we say it has decided value v).
+* Properties
+  + termination - every correct process eventually decides a value 
+  + validity - if a process decides v, then v was proposed by some process 
+  + integrity - no process decides twice 
+  + agreement - no two correct processes decide differently
+* Assumptions 
+  + synchronous system 
+  + fail-stop model (access to crash(p) event)
+  + static membership known by everyone 
+  + can use best effort broadcast 
+  + assume f < #PI
+
+
+
+Lecture 5 ASD next
