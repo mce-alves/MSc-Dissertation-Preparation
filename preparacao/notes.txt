@@ -120,7 +120,7 @@ Reliable Broadcast Problem
 * Another solution (somewhat similar) is in the slides of lecture 2 of ASD
 
 Simple Gossip Algorithm
-* When a process wants to broadcast a message it picks T other processes from the system.
+* When a process wants to broadcast a message it πcks T other processes from the system.
 * These processes are selected uniformly at random. It then sends the message to these processes.
 * When a process receives a message for the first time, it simply repeats this process (eventually avoiding to send the message back to the sender).
 * To ensure high probability (not necessarily 100% guaranteed) that everyone receives the message, T >= ln(num_processes). T is usually named the fanout of the algorithm.
@@ -159,11 +159,11 @@ Overlay Network
 
 How to execute a Gossip algorithm on top of a membership asbtraction like this (overlay network)?
 * The algorithm that maintains the overlay exposes a request whose indication lists the overlay neighbours of the local process.
-* Instead of picking up T random processes out of N, you pick T random processes out of your logical neighbours.
+* Instead of πcking up T random processes out of N, you πck T random processes out of your logical neighbours.
 * Case Study - CYCLON inexpensive membership management for unstructured P2P overlays (Cyclon-Pseudo Code.pdf in the praticas/artigos folder)
   + When a new process joins it has to know the identifier of another process already in the system (contact)
   + Process identifiers are enriched with a counter (age) that state how long ago the identifier was created
-  + Preiodically, each process picks the process identifier that is among the oldest of its partial view and sends a sample of its neighbours alongside a new identifier for itself (age=zero)
+  + Preiodically, each process πcks the process identifier that is among the oldest of its partial view and sends a sample of its neighbours alongside a new identifier for itself (age=zero)
   + The other side replies with a sample of its own neighbours
   + Both processes integrate the information received from their peer, removing identifiers that it sent to the peer (and random ones if required)
 
@@ -206,7 +206,7 @@ Resource Location
   + given a set of processes containing different sets of resources, locate the processes that contain a given resource given its unique identifier
 * Consistent Hashing
   + we can build a distributed index of resources among all processes by doing the following
-  + we pick a hash function that generates hash values in the invertal
+  + we πck a hash function that generates hash values in the invertal
   + we attribute to each process an identifier within the interval (all processes must have a different identifier)
   + for each resource in the system, we compute the hash of its identifier, and store information about it in the process with the closest identifier
     - this means that the resource with hash 10 can be stored in a process with hash 188, but the process with hash closest to 10 knows that the resource is in process 188
@@ -249,8 +249,8 @@ Why are these things relevant / useful nowadays?
 
 Replication Model 
 * A process has a given state S, and a set of operations that return or modify the state (read and write operations, respectively)
-* The process (logic) is replicated, meaning that there are multiple copies. Lets assume that the set of all replicas is known and static: PI and that #PI=N.
-* Clients (processes outside the set PI) invoke operations over the system
+* The process (logic) is replicated, meaning that there are multiple coπes. Lets assume that the set of all replicas is known and static: π and that #π=N.
+* Clients (processes outside the set π) invoke operations over the system
 
 Replication Algorithm (or Protocol)
 * A replication algorithm is responsible for managing the multiple replicas of the process 
@@ -258,10 +258,10 @@ Replication Algorithm (or Protocol)
   + under a given synchrony model 
 * In its essence the replication algorithm will enforce properties over what are the effects of operations observed by clients given the story of the system (and potentially the story of the client issuing a particular operation)
 * High level aspects:
-  + Transparency - the client is not aware that multiple replicas exist. In fact clients only observe a single logical state (or collection of data objects) and are fully unaware of the existance of multiple copies
+  + Transparency - the client is not aware that multiple replicas exist. In fact clients only observe a single logical state (or collection of data objects) and are fully unaware of the existance of multiple coπes
     -> Client interacts with proxy, and proxy interacts with replicas
     -> Client interacts with one replica, and that replica interacts with the other ones
-  + Consistency - despite the individual state of each replica, enforcing consistency implies reestricting the state that can be observed by a client given its past (operations executed by that client) and the system history (operations executed previously by any client)
+  + Consistency - desπte the individual state of each replica, enforcing consistency implies reestricting the state that can be observed by a client given its past (operations executed by that client) and the system history (operations executed previously by any client)
 
 Replication Strategies
 * First Dimension
@@ -295,7 +295,7 @@ Replication Strategies
     -> any replica can process any operation issued by a client (both read and write)
     -> all replicas behave in the same way, which implies better load balancing
     -> adding more replicas can increase the overall capacity of the system to process client operations 
-    -> multiple replicas might attempt to do conflicting operations at the same time, chich requires some for of coordination (distributed locks or other coordination protocols that typically are expensive)
+    -> multiple replicas might attempt to do conflicting operations at the same time, chich requires some for of coordination (distributed locks or other coordination protocols that tyπcally are expensive)
 
 A simplistic replication algorithm 
 * Register replication 
@@ -357,8 +357,363 @@ Homework v2:
   + fail-stop model (access to crash(p) event)
   + static membership known by everyone 
   + can use best effort broadcast 
-  + assume f < #PI
+  + assume f < #π
 
+Problem of Replicating an Integer with current strategies
+* Using either reliable broadcast or majority based quorum, we end up having diverging results in different replicas, when replicating an integer supporting addition and multiplication operations (non commutative operations).
+* The fact that they are not commutative means that the evolution of the state (integer) depends on the order in which the operations are executed.
+* To solve this, we need State Machine Replication.
 
+State Machine Replication
+* Used in practice to replicate the state of servers.
+* A server replica has:
+  + a copy of the service running and a state S.
+  + exports a set of operations O.
+  + each operation in O has a set of arguments (inputs):
+    -> makes the server transit to a new state S'
+    -> produces a reply to the client (output)
+* Each server replica is seen as a state machine.
+* Each server is made deterministic (all operations must be deterministic)
+* Ensure that all correct replicas follow the same sequence of state transitions
+* Use majority on outputs to tolerate failures
+* All correct replicas must receive and execute operations in the same order 
+  + since we have to take into account majorities on replies, we must have a number of replicas N that depends on the total number of faults that are tolerated F (N >= 2F + 1)
+    -> N will depend on the service being replicated, and the underlying fault and system models 
 
-Lecture 5 ASD next
+Enforcing Order 
+* How can one enforce ordering among the operations executed by each server (ie, each state machine)*
+  + The Generals Problem 
+    -> two roman generals have to attack an enemy in coordinated fashion 
+    -> they can only communicate with each other through messengers that have to cross a valey full of dangers
+    -> each general has an initial preference (either attack or retreat) and have to agree in what to do 
+    -> if both have the same initial preference, then that is the only valid decision 
+    -> messengers can either be killed or get arbitrarily delayed in their path 
+    -> a general might die at any moment alonside all his troops 
+       -> in which case he will not send any messenger 
+    -> generals that do not die must eventually make a decision 
+* To achieve state machine replication, replicas have to agree on an order in which to execute operations, which is fundamentally the same as the two generals exchanging messages to decide if they should attack or retreat.
+
+The Consensus Problem (regular variant)
+* each process has an initial value V that he proposes 
+* each correct process eventually decides a value 
+* properties:
+  + C1 Termination - every correct process evetually decides a value 
+  + C2 Validity - if a process decides V, then V was proposed by some process 
+  + C3 Integrity - no process decides twice 
+  + C4 Agreement - no two correct processes decide differently 
+
+Broadcast Consensus (intuition)
+* Algorithm progresses in rounds. Each process knows:
+  + in which round it is (round)
+  + if he already made a decision (decision)
+  + the set of correct processes in previous rounds (initially, at round zero, all processes are considered correct)
+  + the set of all proposals known in each round (intially, at round zero, a process only knows its own proposal)
+* Algorithm starts at round 1
+* In each round, each process broadcasts the set of proposals that it got in the previous round
+* A round terminates when a process gets a message from every correct process in that round 
+* A decision is made when a message is obtained from all (correct) processes and no new crashed process is detected during a round (ie, when the set of correct processes in round R is the same as in round R-1)
+* The decision is obtained by applying a deterministic function (eg, min) over the set of all proposals
+* Why is this correct?
+  + the high intuition is that in a round with no failures, all processes will get the same set of messages, and hence know the same set of proposals 
+  + if all correct processes know the same set of proposals, then any deterministic function that πcks one of these proposals will yield the same value in all correct processes 
+* Properties:
+  + termination - at most in round N, all processes decide 
+    -> processes that do not fail will keep moving from round to round (failures will be detected for sure)
+    -> in the worst case a process fails in each round 
+    -> there are only N processes in the system and F < N 
+  + validity - follows from the algorithm 
+    -> to decide a value, that value has to be in the set of known proposals 
+    -> for the value to be in that set, then some process broadcasted that value in its set 
+    -> the only way to add a value to the set of proposals is if the process proposes that value 
+  + integrity - follows from the algorithm 
+    -> a decision can only be made if DECIDED has a bottom value 
+    -> when a process decides, its DECIDED state becomes the decided value 
+  + agreement - assume that R is the smallest round in which some correct process P decides V, there are two cases:
+    -> if P decided because it got a value V from a correct process, then all other processes receive that value, in the worst case if other process J detects (another) failure in round R, it will decide V in round R+1 because it receives a DECIDED from P
+    -> if P decided because it got a value V from a process that crashes afterwards, then some other process J might not have received the value. However J will decide V in round R+1 because it receives a decided from P
+
+The Consensus Problem (uniform variant)
+* C4 Uniform - no two processes decide differently
+* Why does the previous solution not work?
+  + the problem is that some process might decide too soon 
+  + soon here means that a process makes a decision before being sure that all other processes know or will know in the future the value he is deciding 
+  + the intuition to solve this problem is hence, to delay the decision. But how far should we delay that?
+    -> answer : only make a decision in round N
+* Agreement - all processes that reach round N will have the same set of values in their local proposal-set.
+* Both of these two consensus algorithms have a high message complexity (broadcast = N^2 + N^2 + N^2 * #faults; uniform broadcast = N^3)
+* HOWEVER: the lower bound for solving consensus in synchronous fail-stop environment tolerating F faults, and where F faults happen in F+1 rounds (which is exactly what bcast consensus provides).
+
+How do we use consensus to achieve State Machine Replication?
+* Servers receive operations from clients 
+* They run consensus among them, in which each process proposes an operation to be executed
+  + an independent instance of consensus is executed for each operation to be executed
+* They all decide the same operation to execute 
+* They continue doing this forever, and by the properties of consensus each time they all decide the same operation to be executed step by step
+
+System Trace 
+* A system trace is a way to model the execution of a distributed system considering only its externally observable behaviour where:
+  + only inputs are considered 
+  + we fully abstract the internal state of each process
+
+FLP 
+* Let's consider two sets of processes of arbitrary size (with at least one process): A and B
+* Now let's assume that there exists a deterministic algorithm that solves consensus 
+* Let's build a few traces of the execution of such system (in an asynchronous sytem under the crash fault model)
+* Run One:
+  + all processes in B crash at time t0 
+  + all processes in A propose V at the time t1, t1>t0 
+  + all processes in A decide V at some time t2, t2>t1 
+    -> Trace: B:Crash(), A:Propose(V), A:Decide(V)
+* Consequences of FLP:
+  + Consensus is not solvable (by deterministic algorithm) in asynchronous systems under the crash fault model 
+  + A problem that has been demonstrated to be equivalent to consensus: Total Order Broadcast.
+    -> equivalent implies that:
+       -> if you have consensus, then you can solve the total order broadcast problem 
+       -> if you have total order roadcast, then you can solve the consensus problem 
+
+Total Order Broadcast Specification 
+* TO (total order) - let m1 and m2 be any two messages. Let π and pj be any two correct processes that deliver m1 and m2. If π delivers m1 and m2, then pj delivers m1 before m2.
+* RB1 (validity) - if a correct process i broadcasts message m, then i eventually delivers the message 
+* RB2 (no duplications) - no message is delivered more than once 
+* RB3 (no creation) - if a correct process j delivers a message m, then m was broadcast to j by some process i 
+* RB4 (agreement) - if a message m is delivered by some correct process i, then m eventually delivered by every correct process j 
+
+PAXOS
+* Relaxes the termiantion propertu of consensus, such that we "only ensure" termination if the system behaves in a synchronous way (so no termination at all).
+* PAXOS Consensus Specification 
+  + C2 Validity - if a process decides V, then V was proposed by some process 
+  + C3 Integrity - no process decides twice 
+  + C4 Agreement - no two correct processes decide differently 
+* PAXOS Assumptions 
+  + asynchronous system 
+  + messages exchanged among processes can be lost, duplicated, but never corrupted 
+  + processes can fail by crash and recover at some point in the future (crash-recovery fault model)
+    -> each process has access to persistent storage, that "survives" when a crash occurs
+* 3 different types of processes 
+  + Proposers - propose values 
+  + Acceptors - accept proposed values 
+  + Learners - learn decided values 
+  In practice these roles can be executed together in a single machine
+    -> a proces can have and execute all three roles simultaneously 
+
+PAXOS Solutions
+* Single acceptor - acceptors only accept first value - not really fault tolerant 
+* Tolerating failure of acceptor through REPLICATION 
+  + different acceptors might receive proposals in a different order (and only accept the first one), so when can they make a "final" decision?
+    -> we can think in terms of quorums. Decision is made when a majority accepts the same value. This will ensure an intersection as a majority-based quorum 
+  + what happens when there is no majority? how to deal with multiple (concurrent) proposals?
+    -> acceptors must be able to accept more than one proposal (ie, more than one value, meaning that they might change their oπnion regarding the value that is going to be decided)
+    -> each proposal will be enriched with a sequence number that allows to distinguish different proposal and order them 
+      - proposal = (psn, value)
+      - all proposals have a different proposal sequence number (psn)
+      - definition: a proposal (meaning a pair (psn, value)) is considered SELECTED when it is accepted by a majority of Acceptors (f < N/2)
+        -> at this point learners can declare the decided value 
+    -> sequence numbers can be generated by each proposal by using its identifiers (1..N, where N is the number of proposers) and adding N whenever it needs a new sequence number 
+  + But when should an acceptor change its accepted proposal?
+    -> if an acceptor changes its currently accepted proposal just because it receives a proposal with an higher sequence number, more than one value can be decided (violating the definition of consensus)
+    -> the trick is to avoid an acceptor to change its accepted proposal if there is already a proposal that was accepted by a majority (and hence decided)
+    -> a value in a proposal that was accepted by a majority of acceptors is said to be LOCKED-IN.
+  + Intuitively, an acceptor could safely accept another proposal if the sequence number of that proposal is higher than the previously accepted proposal and:
+    -> if there is no previously locked-in value, then that proposal can propose any value to be decided by consensys 
+    -> if there is already a locked-in value V, then the new proposal also proposes V (this will ensure two different values cannot be decided)
+    -> this can be achieved by having the proposer read accepted values from a majority of acceptors 
+       - the proposers start by preparing their proposals, by checking the currently selected proposal in a majority of acceptors 
+       - if there is no previously selected proposal in a majority of acceptors, then the proposers can propose their own initial values 
+       - then the second proposer knows that there is already a proposal (that might be) locked-in, so it changes its value to also propose the previous one 
+       - is this really fine?... Assume that proposer P wants to emit a proposal with psn_i. If P can be sure that there is no other proposal with psn_j, such that psn_j<psn_i, and value v' that was not decided then he can propose his initial value v. Otherwise P must propose value v' that was already locked in. To do so, the proposer checks the selected proposals from a majority of acceptors, and if there is a proposal already there, he changes his proposed value to the value in the proposal with largest psn_j (might not be locked-in yet, but is safe)
+         -> by checking if some proposal was already selected in a majority of acceptors, the proposer can be sure that things in his past (ie proposals with psn below his own) have not locked-in a value. However, this does not provide a guarantee to the proposer that in the future there will be no proposal with a spn below his own that will lock-in a value 
+         -> in some sense we covered the past, but we also need to make sure that proposals with lower psn cannot affect the future. How do we do this?
+* Ensuring that the past no longer affects the future...
+  + Future manipulation is tricky, and the proposer on its own will not be able to control it 
+  + We need to get assistance from the acceptors 
+  + In particular, when the proposer checks if there is already a locked-in value, he can inform the acceptors (a majority in this case) of the sequence number that he is planning on using. Acceptor that reply to him also promiso to not accept any proposal with a psn below that one (hence the past cannot affect the future).
+  + Why does this work?
+    -> when a proposer gathers a majority quorum from acceptors that promise that they will not accept a proposal with a lower psn than his own, it makes it impossible for such proposal value to be decided (since a majority that will accept a proposal with a lower sequence number becomes impossible to obtain).
+    -> from a practical standpoint, this ensures that if a proposer effectively proposes his initial value, then no proposal with a lower sequence number exists that was already accepted by a majority of acceptor or will ever be accepted by such majority.
+* Learners 
+  + learners can either contact acceptors or be contacted by acceptors to know the value that they have selected 
+  + when a majority of acceptors select the same value then a decision can be made
+
+Propagation of Information to the Learners (different approaches)
+* Whenever an acceptor accepts a value it sends that value (and the sequence number) to the learners 
+* Proposers send information to learners when they know that there is value locked-in (ie, when they gather a majority quorum of ACCEPT_OK)
+* Learners contact acceptors periodically to know which values have been accepted (until they obtain a majority quorum of consistent decisions) 
+
+Applying PAXOS to State Machine Replication 
+* First intuition:
+  + we use PAXOS to decide a command to execute, and upon deciding, we execute the command 
+  + then we use PAXOS again to decide the following command to execute, and upon deciding, we execute the command 
+  + and so on...
+  + however, this can cause problems. Fundamentally, the problem arises because PAXOS operates with majority consensus. However in state machine replication ALL REPLICAS have to execute all operations in order. This must happen independently of that replica participating or not in the quorum that decided a given operation.
+    -> how can we address this issue?
+
+Leveraging PAXOS for State Machine Replication 
+* Assume that there is an infinite sequence of commands that are numbered sequentially, from 0 to infinity.
+* Instead of using PAXOS to decide the next operation to be executed, we use an independent instance of PAXOS to (sequentially) decide which operation will be executed for each of the positions in the sequence of commands.  
+* Whenever a value (ie, a command is decided for position N) we start the PAXOS instance to decide the next command (N+1).
+* Replicas have to execute commands in order strictly follwing this sequence, which is not necessarily the order in which they learn decided commands.
+
+Implementing State Machine Replication with PAXOS 
+* Each replica of the service executes all three roles of PAXOS (proposer, acceptor and learner)
+* Client sends operation OP to replica R 
+* Replica R proposes the received operation in the next PAXOS instance 
+* If the result of PAXOS is the proposed operation, return ok to the client (and eventually the result)
+* Otherwise, propose OP in the next PAXOS instance 
+
+PAXOS Membership Issues 
+* When failures happen and the replica is not recoverable, we need to be able to replace it by another replica 
+* Similarly, thinking about a long running system, at some point we might need to decomission a machine (because it is outdated...) this should not be seen as an unplanned failure of a replica
+* We need mechanisms to manipulate the membership of the system (set π)
+
+PAXOS Problems 
+* Need mechanism to control replica membership (ie, add/remove replicas)
+* PAXOS does not guarantee liveness in the presence of concurrent proposals
+* PAXOS requires two rounds of messages even if only a single proposal exists 
+
+PAXOS with a Leader 
+* Avoids the necessity of executing the prepare phase (more efficient in terms of communication steps) 
+* Only one replica, called the leader, is allowed to make proposals. This effectively reduces the cost of a consensus instance from 2 RTT to 1 RTT.
+* However:
+  + what if the leader fails?
+  + how do we select a leader?
+* Effectively, the preparation phase of PAXOS is selecting a leader for an instance... Obviously, if the system is too asynchronous it might be impossible to select a leader (ie, complete the prepare phase).
+* All replicas "monitor" the leader in the sense that they expect the leader to continuously make proposals (ie, start new PAXOS instances). What if there are no client operations? The leader can then propose a NO-OP operation.
+
+Removing a suspected leader might not be smart...
+* Evidently, the current leader, when receives a prepare from another replica with a higher sequence number, can avoid to reply, and execute a prepare of its own with a higher sequence number (might not be enough since a majority might already have accepted the first prepare)
+* A new leader might not immediately remove a previously suspected node, it might delay this to avoid creating more instability in the system
+* What if a replica becomes leader in some instance N, and the previous leader had already locked-in values for instances up to M, where M > N?
+  + Prepare_OK messages have to report values accepted for any instance >= N 
+  + The new leader will have to re-execute (ie, issue accept messages) for all those replicas using the values that are reported in prepare_OK messages (as in the original PAXOS)
+
+Summary of Multi-PAXOS 
+* The previous modifications (optimizations) to PAXOS are known as Multi-PAXOS.
+* The intuition is:
+  + To have an explicit leader (or a distinguished proposer)
+  + Imbue the membership management into the state machine 
+  + Have a single prepare phase to be used to execute multiple accept phases in sequence by the leader
+* Details:
+  + Since only the leader proposes, client requests either are all directed at the leader, or should be redirected from replicas that receive them to the leader 
+  + The leader can batch multiple operations (in an order defined by him) in a single PAXOS instance 
+  + The leader can also start multiple PAXOS instances concurrently (ie, instance n, n+1, n+2, n+3) all with different values. However, replicas (including the leader) can only execute operations following the strict instance order.
+
+Atomicity 
+* Given a trace of a system, there exists for each operation a serialization point, between the start and the end of the operation. If we consider that the operation has happened at that point, then the state of the system follows the effects of all operations.
+* If an operation never returns a reply to the client, then such an operation might or might not have a serialization point.
+
+Strong Consistency 
+* Systems that provide this notion of a strict evolution of state across all replicas (and hence Atomicity) are said to offer Strong Consistency 
+* Multiple consistency models that fit Strong Consistency:
+  + linearizability 
+  + serializability
+
+Linearizability 
+* Guarantee about single operations on single objects. It provides real-time guarantee on the behaviour of a set of single operations (often reads and writes) on a sginle object (eg, distributed register or data item).
+* Under linearizability, writes should appear to be instantaneous. Informally, once a write completes, all later reads (where "later" is defined by a global wall-cock start time) should return the value generated by that write or the value of a later write. Once a read returns a concrete value, all later reads should either return that value or a value produced by a later write.
+
+Serializability
+* Guarantee about groups of one or more operations over one or more objects (usually called transactions). it guarantees that the execution of a set of transactions (usually containing read and write oeprations) over multiple data objects is equivalent to some serial execution (total ordering) of the transactions.
+* Unlike linearizability, serializability does not - by itself - impose any real-time constraints on the ordering of operations. It only requires a single order across all replicas (that might be different from the order of operations in relation to a global wall clock).
+
+Downsides of Strong Consistency
+* Will always require (among other things) that operations contact a quorum of replicas to execute.
+  + This is required to enforce that read operations always return the value of the last completed write operation.
+* In many cases, contacting a quorum of replicas might be an issue that creates new problems:
+  + Geo-Replicated Systems (high latency between replicas in different continents)
+  + Systems where there is poor connectivity between clients and server replicas (eg, mobile applications)
+  + Systems with strict requirements of performance (Service Level Agreements) such as maximum latency for an operation 
+
+Weak Consistency Solution 
+* Contrary to strong consistency replication solutions, operations are only executed in a small (smaller than a quorum, ie, without intersection guarantees) set of replicas, eventually only one.
+* Operations are then propagated between replicas in background
+* Clients obtain their answer before replication mechanisms are executed (ie, relies on some form of asynchronous replication)
+* Possible problems?
+  + Replicas will diverge (while operations are happening and being propagated among replicas, each replica might have a different value from all the others)
+  + We have to find ways to explicitly deal with replica divergence
+
+Weak Consistency Models 
+* Similar to strong consistency, there are multiple consistency models that fit within what is generally refered as Weak Consistency (recently renamed to Available Consistency).
+* A consistency Model defines a set of safety conditions for a replication algorithm that (usually) restricts the state of the system that a client can observe given the history of the system and his own local history (ie, the operations that the client itself has executed before)
+
+Weak Consistency (Eventual Consistency)
+* Eventual consistency only promises that eventually, when no write operations happen, all replicas of the system will converge to the same state.
+  + This is a livenes property.
+* Since there are no safety properties, the key aspect of Eventual Consistency replication strategies is to enforce the convergence of state. How?
+  + Last Writer Wins 
+    -> we define an order among any concurrent write operations 
+    -> we lose the effects of all operations (over a given data object) except the last one (given that order)
+  + Replicas do know a "merge procedure" that given the state of two divergent replicas, knows how to compute a new state that combines both divergent states (this must be deterministic)
+  + We expose the divergence to clients (for isntance by returning multiple values upon the execution of a read operation) and the client merges these values and writes the new value back to the system (application-dependent policy)
+
+TODO : read paper on DynamoDB ("dynamo-paper.pdf")
+Dynamo deals with concurrency using vector clocks (from CP?)
+* Each replica has a vector that essentially stores, in position i, the number of writes performed by replica i. If two clocks C1 and C2 aren't strictly >= <= than the other, than there was a concurrent write (they are incomparable).
+  -> how we handle the concurrent writes after detection is up to implementation (last writer wins, client resolution, etc.)
+
+Benefits of Eventual Consistency 
+* Allows for faster response times for clients (by avoiding server replicas to coordinate with each client operation)
+* Improves availability (broader conditions in which the system is able to process client requests)
+
+The Dark Side of Eventual Consistency 
+* The behaviour of the system might be hard to grasp by users/developers
+* In particular, a sequence of reads executed by a client might exhibit state that is not consistent with the evolution of time by the user
+
+Wait, why did we leave strong consistency?
+* Strong consistency depens on total ordering of all client operations 
+  + increased response times (high latency)
+  + operations cannot happen if a majority of replicas is not reachable 
+
+The network is not your friend: Network Partitions 
+* Network partitions can happen at any time due to multiple effects:
+  + Hardware failure (router/switches)
+  + IP routing instability
+  + Poorly configured firewalls 
+  + Political decisions (blocking traffic from given sources)
+* Network partitions are more likely in scenarios where replicas are scattered across long distances (eg, geo replication)
+* We are looking for a solution that:
+  + Is available - allows clients to complete operations despite failures and network partitions 
+  + Is strongly consistent - creates a total order among, at least, the operations of clients that modify the state of the system 
+
+CAP Theorem
+* In a distributed system it is impossible to simultaneously provide:
+  + Strong Consistency - as in atomicity, every client will observer the effects of the most recent write 
+  + Availability - all operations eventually finish 
+  + Partition-Tolerable - network anomalies that fraction the system into multiple components, where only the communication links inside each component are reliable 
+* Therefore... Casual Consistency 
+
+Casual Consistency 
+* It is a consistency model that enforces that each client always observes a system that respects the cause -> effect relationships between write operations 
+* Typically described by the combination of four fundamental properties 
+  + read your writes -> a client must always be able to observe the effects of all previous writes issued (and for which it got a reply from the system) by itself. Observing the effects does not imply that the same value must be returned. It imples that the returned value is at least as up-to-date as the value written by the client itself.
+  + monotonic reads -> subsequent reads issued by the same client should observe either the same state or an inflation of the system state (ie, the state observed previously modified by a new write operation). This property ensures that the system state does not "evolve into the past".
+  + monotonic writes -> the effects of multiple write operations issued by a given client, must be observed respecting that order by every other client. Example:
+    -> Assume that a client C writes 1 on object X and 2 on object Y (both objects intially had value 0)
+    -> If another client observes y=0 and then x=1, this does not violate Monotonic Writes.
+    -> If another client observes y=2 and then x=0, this violates Monotonic Writes
+  + writes follows reads -> if a client observes the effects of a write operation in its session (through a red operation), then any subsequent write operation issued by that client must be ordered after the previously observed write.
+    -> this is also known as the transitivity rule.
+       -> if you think carefully up to now the properties previously discussed only refer to a single client session
+       -> this is the property that establishes a connection between sessions of different clients 
+
+Causality
+* Causality by itself does not guarantee that the state of multiple replicas converge to a single value (even if at some point in time no more write operations happen)
+* Divergence can last forever without breaking any causality property (provided clients are always connected to the same replica)
+
+Casual+ Consistency Model 
+* It's a recently formalized consistency model that simply combines the properties of Casual and Eventual consistency.
+* In short it ensures that the state of replicas eventually converges to a single state if no more write operations happen.
+* Caveat:
+  + clients must stick with a replica 
+  + if a replica fails (permanently) then those clients might be forced to restart their sessions (which is a nice way to say sacrifice casual consistency guarantees)
+
+Implementing Replication Protocols offering Causal+ Consistency 
+* There is a partial order among write operations defined by a combination of:
+  + order of write operations executed by a client 
+  + effects of write operations observed by a client (in their read operations) before they issue a write 
+* Track causal dependencies of operations (potentially associate those to data objects written by each write operation)
+* Ensure, for each client, that if a value generated by Wa is observed, no value can be observed that has been overwritten by any Wd such that Wd is a causal dependency of Wa
+* A typical way to do this is to only allow the effects of Wa to become visible after the effects of any operations that are overwritten by any Wd become impossible to observe 
+* This requires clients to memorize all write operations whose effects have been observed in their session (which includes not only the write operations directly observed but all of their causal dependencies) - the CLIENT CAUSAL STORY 
+* When performing a write operation, the causal history of the client is sent alongside the write and recorded in the data storage system.
+* Dependencies of operations might grow quite significantly.
+
