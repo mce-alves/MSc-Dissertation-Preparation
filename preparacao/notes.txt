@@ -717,3 +717,128 @@ Implementing Replication Protocols offering Causal+ Consistency
 * When performing a write operation, the causal history of the client is sent alongside the write and recorded in the data storage system.
 * Dependencies of operations might grow quite significantly.
 
+We now need a different abstraction 
+* The abstraction we are looking for allows to execute two or more operations in a way that:
+  + either all operations terminate with success
+  + or if one of the operations fail, then none of the operations can have any visible effect
+* This is related to transactions
+  + a transaction is an operation that groups multiple read and write operations into a single (meta) operation 
+  + transaction were derived from the database community, and they provide the ACID properties
+  + transactions have a special operation to start (Begin Transaction) and a special operation to finish (Commit)
+  + the final operation return value indicates if the operation succeeded or failed 
+
+ACID Properties 
+* Atomicity - all operations have their intended effects or none have 
+* Consistency - the state of the database respects all invariants of the data model before the execution of a transaction and after the execution of a transaction (this is different from the consistency of replication protocols)
+* Isolation - each transaction executes with no interference from other (concurrent) transactions, either all effects of a transaction are observed by a running transaction or none are 
+* Durability - the effects of a transaction that terminates successfully are not lost (independently of failures that might happen)
+
+Distributed Transactions 
+* While databases that provide ACID properties have multiple solutions to locally enforce these properties (eg, MySQL, OracleDB, etc.) when generalizing the execution of transactions across multiple processes (not necessarily replicas) we have another challenge.
+* Going back to the banking problem, imagine that the replicas hosting information for account A and account B are different (eg, different Banks)
+* Goal - preserve the properties of transactions (ACID) in a distributed scenario with failures 
+* Model - distributed database 
+  + transaction with several processes 
+  + one coordinator, other participants 
+* Fault model - crash recovery 
+* Processes have access to persistent storage (to write to a "log")
+
+Problem of Atomic Commit 
+* Input of Pi - vote_i in {yes,no}
+* Output of Pi - decision_i in {commit, abort}
+* vote_i is the vision of each process of wether the transaction respects ACID properties 
+  + with optimistic concurrency control, identifies if the transaction can be serialized in the order proposed by the coordinator -> has read the correct version of data 
+  + with pessimistic concurrency control / locks, identifies wether all locks have been acquired 
+
+Specification of Atomic Commit 
+* AC1 (agreement) - any two processes that decide, decide the same value 
+* AC2 (validity, part1) - if some process starts with the value "no" then "abort" is the only possible decision
+* AC3 (validity, part2) - if all processes start with value "yes" and none fails, then "commit" is the only possible decision 
+* AC4 (termination) - if eventually all processes recover from all faults, then eventually all processes decide 
+
+One-Phase Commit 
+* Coordinator sends decide_i (commit or abort) to every participant 
+* Participant 
+  + if decide_i = commit, store result in stable memory 
+  + if decide_i = abort, discard intermediate results 
+* AC2 does not hold, and participants cannot influence the final result
+
+Two-Phase Commit (2PC)
+* Solves the problem of Atomic Commit 
+* Assumes a synchronous system 
+  + in particular, timeout == crash (although a node can recover in the future)
+  + in practice 2PC can be used in an asynchronous system but does not guarantee property AC3 
+* Note that Atomic Commit is weaker than consensus because it can default to ABORT when suspects a failure + less strict termination property 
+* Algorithm 
+  + Coordinator sends vote-request to all participants 
+  + Each participant Pi 
+    -> Send vote_i to coordinator. If vote_i == no then decide_i = abort 
+  + Coordinator checks if all voted yes, then decide_coord = COMMIT and send COMMIT to all 
+    -> else decide_coord = ABORT and send ABORT to all participants that voted "yes"
+  + Each participant Pi 
+    -> If receive COMMIT then decide_i = COMMIT else decide_i = ABORT 
+* Properties AC1, AC2 and AC3 hold. AC4 (termination) does not.
+  + If a process crashes, when it recovers it forgets if it had sent a vote before... consequently, all processes might be waiting for ever and never terminate.
+    -> one needs to have a log of all previous actions in stable storage 
+    -> one can use a timeout to avoid waiting for messages that will never arrive 
+  
+What to do in the event of a timeout? 
+* Pi waits for vote-req from the coordinator -> Pi can unilaterally abort
+* Coordinator waits for votes from all participants -> coordinator can decide ABORT and send it to all processes
+* Pi (that voted yes) waits for final decision -> cannot make a decision and must execute a special protocol to be able to terminate 
+* Termination Protocol
+  + A possibility is to wait for the coordinator to recover 
+    -> this works since AC4 only requires termination if all processes that fail eventually recover 
+    -> but this might block the recovery mechanism for a long time in an unnecessary fashion 
+  + Other option is to ask other participants what happened 
+    -> processes that have already decided send the decision, processes that never voted can decide ABORT and sent it to all other processes 
+    -> what if all processes are waiting for a decision of the coordinator?
+  
+Logging
+* When sending VOTE-REQ, coord logs START-2PC 
+* Before sending YES, Pi writes YES to the log 
+* When sendin NO, Pi writes ABORT to the log (can be done after sending the message)
+* Upon deciding COMMIT and sending the decision to all participants, the coordinator writes COMMIT in the log 
+* Upon deciding ABORT, coordinator writes ABORT to the log (can be done after sending the message)
+* Upon receiving a decision, Pi writes it to the log
+
+Recovery Protocol 
+* Upon recovery, if the log contains START-2PC 
+  + and if the log contains COMMIT decide COMMIT 
+  + otherwise decide ABORT 
+* If the START-2PC is not in the log, the process is only a participant 
+  + if log contains decision, decide that value 
+  + otherwise, if log does not contain YES vote, decide ABORT 
+  + otherwise, execute termination protocol (ask all processes for a decision, and wait either for an ABORT from a participant, or a definite answer from the coordinator)
+
+Problems with Two-Phase Commit Protocol 
+* Protocol is blocking 
+  + participants need to wait for the recovery of the coordinator (in prepared state) 
+  + requires coordinator to wait for the recovery of participants (in commit state)
+* Recovery is not independent 
+
+Three-Phase Commit 
+* Goal -> turn 2PC into a live (non-blocking) protocol 
+  + 3PC should never block on node failures as 2PC did 
+* Idea in 3PC -> split "commit/abort" phase into two phases 
+  + first communicate the outcome to everyone 
+  + let them commit only after everyone knows the outcome 
+* Phases 
+  + Phase 1 
+    -> coordinator sends VOTE-REQ 
+    -> participants vote YES/NO 
+  + Phase 2 
+    -> coordinator gathers votes and:
+       -> sends PRE-COMMIT to all participants, if decision is commit 
+       -> sends abort to all participants that voted yes, if decision is abort 
+    -> participants execute abort or send ACK of PRE-COMMIT
+  + Phase 3
+    -> coordinator gathers ACKs and sends COMMIT 
+    -> participants execute COMMIT 
+* Does it solve blocking?
+  + if one participant received PRE-COMMIT, all can commit 
+    -> safe if participants run recovery protocol 
+  + if no participant received PRE-COMMIT, all can abort 
+    -> safe because it is known that no participant has received a commit 
+* Liveness (availability) -> yes. Always makes progress (even by timing out - doesn't block)
+* Safety (correctness) -> no. It is not safe under network partitions.
