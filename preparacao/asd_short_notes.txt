@@ -1,0 +1,75 @@
+Super Resumo de ASD (ficheiro asd_full_notes.txt tem o mesmo conteudo mas com mais detalhe):
+
+-> como modelar um sistema distribuido (processos e rede; comunicacao por mensagens)
+-> diferentes modelos de falhas (crash, omission, fail-stop, byzantine) : especifica diferentes assunções que podemos ter em relação ao que acontece quando existem falhas num sistema distribuido 
+-> modelos de redes (fair loss, stubborn, perfect link) : especifica assunções sobre garantias dadas pela rede
+-> problems e protocolos de broadcast : propriedades que é necessário garantir
+-> algoritmos de gossip
+-> problemas relacionados com possuir uma membership global (membership é cada processo correto saber em cada instante todos os outros processos corretos)
+   -> se um sistema for muito grande, alteracoes na membership (novos processos, crash de processos, etc) podem ser frequentes e torna-se caro manter esta informação atualizada
+-> overlay networks (cada processo conhece apenas um subset dos processos corretos na rede, e propagando mensagens PROVAVELMENTE chega-se a toda a rede)
+-> CYCLON inexpensive membership management for unstructured P2P overlay networks 
+-> conhecer a localização de um recurso, numa overlay network (o processo ao qual perguntamos sobre o recurso pode n ter esse recurso na sua overlay network, e pergunta quem tem etc.)
+  -> flooding com horizonte limitado: vai-se propagando a query de vizinho para vizinho ate um numero limite de saltos (hopCount). Requere um numero de mensagens potencialmente elevado.
+  -> super-peers: varios processos na rede sao escolhidos para serem super peers, e os superpeers formam uma rede entre si. Cada processo "normal" diz ao super peer "mais proximo" quais os recursos que possui. As queries sao sempre forwarded aos super peers que comunicam entre eles para encontrar o recurso. A desvantagem é que a carga de pesquisa é toda direcionada aos super peers.
+  -> resource location (exact match) usando hashing: temos uma funcao de hashing para os recursos, e cada processo tem tambem um hash associado. Nao existe limitacao sobre que recursos sao guardados em que processo. Por exemplo, o ficheiro com hash 10 pode estar no processo com hash 188, mas o processo com hash mais proxima de 10 sabe que o processo 188 é que contém o ficheiro 10. Quando temos full membership isto dá-nos uma One Hop Distributed Hash Table.
+-> overlay networks estruturadas: baseadas em anél, árvore, etc. Chord, Pastry, Kadmelia (artigos)
+   -> nao estruturado - facil de construir e manter. robusto perante falhas. efeciente em apenas alguns casos 
+   -> estruturado - muito efeciente em alguns casos (exact search, broadcast). menos robusto perante falhas. mais complexo.
+-> replicação
+-> algoritmos de quorum (para replicação e não só): necessitam de uma opiniao (igual) de parte dos processos da rede para concluirem a sua operação (obterem um resultado). Diferentes variações:
+   -> majority : todas as operacoes tem de ser executadas na maioria dos processos 
+   -> weighted : define-se um peso para cada processo, e cada operacao read/write precisa de ser executada num set de processos cujo peso é >= ao peso minimo definido para um read e para um write (pesos podem ser diferentes)
+-> consensus problem : clients propose values (or call operations) on one process. This processe then has to communicate his intention of executing an operation to all other processes, and they have to reach a consensus on what is the result of the operation.
+-> total order broadcast : garantir que todos os processos vêm alteracoes/execucoes de operacoes pela mesma ordem
+-> PAXOS : assume um sistema assincrono, mas so garante que as operações terminem quando o sistema se comporta de forma sincrona.
+   -> 3 tipos de processos: proposers (propõe valores), acceptors (aceitam valores propostos), learners (aprendem os valores decididos). 1 processo pode adquirir em simultaneo os 3 papéis.
+   -> proposers propõem um valor a uma maioria dos acceptors (majority quorum)
+   -> os acceptors podem mudar a sua opiniao sobre que valores vao ser decididos (caso hajam propostas concorrentes)
+   -> cada proposta tem um numero de sequencia associado, de forma a ordenar propostas 
+      -> quando um proposer obtém a maioria do quorum, os accepters "prometem" que não vão aceitar nenhuma proposta com numero de sequencia mais baixo que o atual.
+   -> uma proposta é considerada SELECTED quando é aceite por uma maioria dos acceptors 
+-> Para replicação, PAXOS não é suficiente pois precisamos de um mecanismo para controlar membership, não nos dá garantias de liveness (que tudo corra como esperado) quando existem propostas concurrentes e requere sempre 2RTTs de mensagens mesmo para uma só proposta.
+-> Multi-PAXOS 
+   -> temos um líder explícito
+   -> temos uma unica fase de preparação, usada para fases de aceitação seguintes em sequência.
+   -> mais detalhadamente:
+      -> apenas o lider pode fazer propostas. Os pedidos dos clientes sao todos redirecionados para o lider
+      -> o lider pode criar batches com várias operações (numa order definida por ele próprio) numa só instancia de PAXOS 
+      -> o lider pode instanciar varias instancias concorrentes de PAXOS, com numero de instancia diferentes, mas as replicas executam-nas seguindo a ordem de instancia.
+-> atomicidade, consistencia, linearizabilidade (um processo) e serializabilidade (replicas).
+-> consistência forte (linearizabilidade e serializabilidade), consistência eventual (eventualmente, quando nao estiverem a executar escritas, todas as replicas convergem para um mesmo estado; dificil de raciocinar sobre o estado de um sistema) e consistência casual (diz que cada cliente observa o sistema de forma que respeita relacoes causa-efeito entre operacoes de leitura e escrita executadas pelo cliente)
+-> consistencia causal 
+   -> read your writes (ver os efeitos das suas escritas), monotonic reads (dois reads seguidos, o segundo mostra o mesmo valor que o primeiro, ou um escrito posteriormente mas nunca um anterior), monotonic writes (se um cliente escreve, por ordem X=1 e Y=2, um outro cliente pode observar x=1 e Y=old, x=1 e Y=2, mas nunca x=old e Y=2), writes follow reads (se o cliente vê um write, o seu write terá de ser visto pelos outros depois do write anterior).
+-> ACID (atomicity, consistency, isolation, durability)
+   -> atomicity : uma operações tem todos os efeitos ou nenhum 
+   -> consistency : o estado da base de dados respeita as invariantes definidas pelo sistema 
+   -> isolation : cada transação executa sem interferencia das outras transacoes (concorrentes). todos os efeitos de uma transacao sao visiveis, ou nenhum o é 
+   -> durabilidade : se uma transacao termina, entao os seus efeitos serao visiveis 
+-> one, two and three phase commits
+-> One-Phase Commit 
+    * Coordinator sends decide_i (commit or abort) to every participant 
+    * Participant 
+    + if decide_i = commit, store result in stable memory 
+    + if decide_i = abort, discard intermediate results 
+    * AC2 does not hold, and participants cannot influence the final result
+-> 2 Phase Commit (can block due to failures)
+  + Coordinator sends vote-request to all participants 
+  + Each participant Pi 
+    -> Send vote_i to coordinator. If vote_i == no then decide_i = abort 
+  + Coordinator checks if all voted yes, then decide_coord = COMMIT and send COMMIT to all 
+    -> else decide_coord = ABORT and send ABORT to all participants that voted "yes"
+  + Each participant Pi 
+    -> If receive COMMIT then decide_i = COMMIT else decide_i = ABORT 
+-> 3 Phase Commit (does not block due to failures)
+  + Phase 1 
+    -> coordinator sends VOTE-REQ 
+    -> participants vote YES/NO 
+  + Phase 2 
+    -> coordinator gathers votes and:
+       -> sends PRE-COMMIT to all participants, if decision is commit 
+       -> sends abort to all participants that voted yes, if decision is abort 
+    -> participants execute abort or send ACK of PRE-COMMIT
+  + Phase 3
+    -> coordinator gathers ACKs and sends COMMIT 
+    -> participants execute COMMIT 
