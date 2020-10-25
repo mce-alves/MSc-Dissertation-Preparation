@@ -45,10 +45,10 @@ impl Proposer {
                 self.id = self.id + 1;
                 let msg = self.create_prepare_msg();
                 // broadcast the PREPARE message
+                println!("Proposer {} broadcasting PREPARE wit id={}.", self.pid, self.id);
                 broadcast((self.membership).clone(), msg);
                 // update state
                 self.state = ProposerState::PREPARED;
-                println!("Proposer {} broadcasted PREPARE wit id={}.", self.pid, self.id);
             },
             _ => {
                 println!("Proposer {} cannot PREPARE since it is not in IDLE state.", self.pid);
@@ -62,10 +62,10 @@ impl Proposer {
             ProposerState::PREPARED => {
                 let msg = self.create_propose_msg(val);
                 // broadcast the PROPOSE message
+                println!("Proposer {} broadcasting PROPOSE wit id={}, val={}.", self.pid, self.id, val);
                 broadcast(self.membership.clone(), msg);
                 // update state
                 self.state = ProposerState::PROPOSED;
-                println!("Proposer {} broadcasted PROPOSE wit id={}, val={}.", self.pid, self.id, val);
             },
             _ => println!("Proposer {} cannot send PROPOSE because it is not in PREPARED state.", self.pid)
         }
@@ -141,6 +141,8 @@ impl Proposer {
                                 assert!(m.value == v); // all accept messages need to accept the same value!
                             }
                             println!("Proposer {} has reached consensus on value {}.", self.pid, v);
+                            self.state = ProposerState::ACCEPTED;
+                            // TODO : end here?
                             // clear protocol data
                             self.clear_data();
                             // update state

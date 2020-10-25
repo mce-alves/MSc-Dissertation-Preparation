@@ -8,6 +8,7 @@ static CHANCE_OF_FAILURE:i32 = 5; // chance of a message not being sent
 
 #[derive(Clone)]
 pub enum MessageType {
+    BEGIN,
     PREPARE,
     PROMISE,
     PROPOSE,

@@ -1,7 +1,6 @@
 // mca @ 49828
 
 use std::sync::mpsc;
-use std::sync::Arc;
 use crate::message::*;
 
 enum AcceptorState {
@@ -15,7 +14,6 @@ pub struct Acceptor {
     state: AcceptorState,                       // state / phase of the acceptor 
     max_id: i32,                                // highest ID seen so far
     tx:mpsc::Sender<Message>,                   // this proposers TX
-    membership:Vec<mpsc::Sender<Message>>,      // membership (known correct processes)
     accepted_val:Option<i32>,                   // already accepted value
     accepted_id:Option<i32>                     // id of the propose of the accepted value
 }
@@ -23,13 +21,12 @@ pub struct Acceptor {
 
 impl Acceptor {
 
-    pub fn new(t_pid:i32, t_tx:mpsc::Sender<Message>, t_membership:Vec<mpsc::Sender<Message>>) -> Acceptor {
+    pub fn new(t_pid:i32, t_tx:mpsc::Sender<Message>) -> Acceptor {
         Acceptor {
             pid: t_pid,
             state: AcceptorState::IDLE,
             max_id: -1,
             tx: t_tx,
-            membership: t_membership,
             accepted_val: None,
             accepted_id: None
         }
@@ -39,8 +36,8 @@ impl Acceptor {
     pub fn snd_promise(&mut self, target:mpsc::Sender<Message>, target_pid:i32) -> () {
         // can send promise in any state, as long as max_id > -1 (as received some prepare)
         if self.max_id > -1 {
+            println!("Acceptor {} sending promise with id={} to Proposer {}.", self.pid, self.max_id, target_pid);
             target.send(self.create_promise_msg()).unwrap();
-            println!("Acceptor {} sent promise with id={} to Proposer {}.", self.pid, self.max_id, target_pid);
             match self.state {
                 AcceptorState::IDLE => {
                     // update state to promised if currently in IDLE state
@@ -61,8 +58,8 @@ impl Acceptor {
             AcceptorState::PROMISED => {
                 match (self.accepted_id, self.accepted_val) {
                     (Some(id), Some(val)) => {
+                        println!("Acceptor {} sending accepted with id={}, val={} to Proposer {}.", self.pid, id, val,target_pid);
                         target.send(self.create_accept_msg(id, val)).unwrap();
-                        println!("Acceptor {} sent accepted with id={}, val={} to Proposer {}.", self.pid, id, val,target_pid);
                         // update state to ACCEPTED
                         self.state = AcceptorState::ACCEPTED;
                     },

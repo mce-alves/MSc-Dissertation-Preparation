@@ -1,54 +1,75 @@
 // mca @ 49828
 
-/*
-    Notes:
-    * Messages between threads : https://doc.rust-lang.org/book/ch16-02-message-passing.html
-    * Simple Paxos explanation : https://www.cs.rutgers.edu/~pxk/417/notes/paxos.html
-    * Better Paxos explanation : https://paxos.systems/index.html
-*/
-
 use std::sync::mpsc;
-use std::thread;
+use rand::Rng;
+use std::process;
+use std::io;
 
 #[path = "communication/message.rs"] mod message;
 #[path = "paxos/node.rs"] mod node;
 
-struct Message {
-    msg_type:String,
-    msg_id:i32,
-    msg_content:i32
-}
+static NUM_PROCESSES:i32   = 5;
+static MAJORITY_QUORUM:i32 = 3;
 
-fn thread_communication_test() -> () {
-    let (tx, rx) = mpsc::channel::<Message>();
-
-    let process1 = thread::spawn({
-        let tx1 = mpsc::Sender::clone(&tx);
-        move || {
-            for i in 0..10 {
-                tx1.send(Message{msg_type:"PREPARE".to_string(), msg_id:i, msg_content:i}).unwrap();
-            }
-        }
-    });
-
-    let process2 = thread::spawn({
-        let tx1 = mpsc::Sender::clone(&tx);
-        move || {
-            for i in 0..10 {
-                tx1.send(Message{msg_type:"PROPOSE".to_string(), msg_id:i, msg_content:i}).unwrap();
-            }
-        }
-    });
-
-    for rcvd in rx {
-        println!("Got Message: msg_type={}, msg_id={}, msg_content={}", rcvd.msg_type, rcvd.msg_id, rcvd.msg_content);
-    }
-
-    let _ = process1.join();
-    let _ = process2.join();
-}
 
 fn main() {
-    thread_communication_test();
+    let mut channels:Vec<(mpsc::Sender<message::Message>, mpsc::Receiver<message::Message>)> = Vec::new();
+    let mut nodes = Vec::new();
+    let mut membership:Vec<mpsc::Sender<message::Message>> = Vec::new();
+
+    // create communication channels
+    for _ in 0..NUM_PROCESSES {
+        let (tx, rx) = mpsc::channel::<message::Message>();
+        channels.push((tx.clone(), rx));
+        membership.push(tx);
+    }
+
+    // create nodes
+    for i in 0..NUM_PROCESSES {
+        let (tx, rx) = channels.remove(0);
+        // start one thread to act as each node
+        nodes.push(std::thread::spawn( {
+            let mut node = node::Node::new(i, MAJORITY_QUORUM, tx, rx, membership.clone());
+            move || {
+                node.run();
+            }
+        }))
+    }
+
+    // handle console input (commands to start proposals)
+    loop {
+        let mut input = String::new();
+        match io::stdin().read_line(&mut input) {
+            Ok(_) => {
+                let split_input:Vec<&str> = input.split_whitespace().collect();
+                if split_input.len() > 0 {
+                    if split_input[0].to_string() == "begin" {
+                        // choose a random node and send a BEGIN message to that node
+                        let mut rng = rand::thread_rng();
+                        let roll = rng.gen_range(0, NUM_PROCESSES);
+                        membership[roll as usize].send(message::Message{
+                            msg_type: message::MessageType::BEGIN,
+                            prepare: None,
+                            promise: None,
+                            propose: None,
+                            accepted: None,
+                            rejected: None
+                        }).unwrap();
+                    }
+                    else if split_input[0].to_string() == "exit" {
+                        process::exit(0);
+                    }
+                    else {
+                        println!("Invalid command.");
+                    }
+                }
+                else {
+                    println!("Invalid command.");
+                }
+            }
+            Err(error) => println!("error: {}", error),
+        }
+    }
+
 }
 
