@@ -48,6 +48,7 @@ impl Proposer {
                 broadcast((self.membership).clone(), msg);
                 // update state
                 self.state = ProposerState::PREPARED;
+                println!("Proposer {} broadcasted PREPARE wit id={}.", self.pid, self.id);
             },
             _ => {
                 println!("Proposer {} cannot PREPARE since it is not in IDLE state.", self.pid);
@@ -64,6 +65,7 @@ impl Proposer {
                 broadcast(self.membership.clone(), msg);
                 // update state
                 self.state = ProposerState::PROPOSED;
+                println!("Proposer {} broadcasted PROPOSE wit id={}, val={}.", self.pid, self.id, val);
             },
             _ => println!("Proposer {} cannot send PROPOSE because it is not in PREPARED state.", self.pid)
         }
@@ -75,6 +77,7 @@ impl Proposer {
             ProposerState::PREPARED => {
                 match (msg.msg_type, msg.promise) {
                     (MessageType::PROMISE, Some(promise)) => {
+                        println!("Proposer {} received promise from Acceptor {} for id={}.", self.pid, promise.sender_pid, promise.id);
                         let mut already_received = false;
                         let mut propose_val = self.pid;
                         let mut highest_id = -1;
@@ -119,6 +122,7 @@ impl Proposer {
             ProposerState::PROPOSED => {
                 match (msg.msg_type, msg.accepted) {
                     (MessageType::ACCEPTED, Some(accepted)) => {
+                        println!("Proposer {} received accepted from Acceptor {} for id={}, val={}.", self.pid, accepted.sender_pid, accepted.id, accepted.value);
                         let mut already_received = false;
                         // check if the message has already been received
                         for m in self.rcvd_accepts.as_slice() {
@@ -156,13 +160,15 @@ impl Proposer {
             ProposerState::PREPARED => {
                 match (msg.msg_type, msg.rejected) {
                     (MessageType::REJECTED, Some(rejected)) => {
+                        println!("Proposer {} received rejected from Acceptor {} for id={}.", self.pid, rejected.sender_pid, rejected.id);
+                        // TODO : store unique rejects, and only restart if we get majority rejects?
                         // means the prepare failed (because the sequence id was too low)
-                        self.id = rejected.max_id;
+                        //self.id = rejected.max_id;
                         // clear protocol data
-                        self.clear_data();
+                        //self.clear_data();
                         // update state
-                        self.state = ProposerState::IDLE;
-                        // TODO : try to PREPARE again ?
+                        //self.state = ProposerState::IDLE;
+                        //try to PREPARE again ?
                     },
                     _ => println!("Proposer {} received invalid REJECTED message.", self.pid)
                 }

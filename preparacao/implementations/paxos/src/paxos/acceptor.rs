@@ -36,10 +36,11 @@ impl Acceptor {
     }
 
     // send PROMISE message to target
-    fn snd_promise(&mut self, target:mpsc::Sender<Message>) -> () {
+    fn snd_promise(&mut self, target:mpsc::Sender<Message>, target_pid:i32) -> () {
         // can send promise in any state, as long as max_id > -1 (as received some prepare)
         if self.max_id > -1 {
             target.send(self.create_promise_msg()).unwrap();
+            println!("Acceptor {} sent promise with id={} to Proposer {}.", self.pid, self.max_id, target_pid);
             match self.state {
                 AcceptorState::IDLE => {
                     // update state to promised if currently in IDLE state
@@ -54,13 +55,14 @@ impl Acceptor {
     }
 
     // send ACCEPTED message to target
-    fn snd_accept(&mut self, target:mpsc::Sender<Message>) -> () {
+    fn snd_accept(&mut self, target:mpsc::Sender<Message>, target_pid:i32) -> () {
         match self.state {
             AcceptorState::ACCEPTED => println!("Acceptor {} has already accepted a proposal.", self.pid),
             AcceptorState::PROMISED => {
                 match (self.accepted_id, self.accepted_val) {
                     (Some(id), Some(val)) => {
                         target.send(self.create_accept_msg(id, val)).unwrap();
+                        println!("Acceptor {} sent accepted with id={}, val={} to Proposer {}.", self.pid, id, val,target_pid);
                         // update state to ACCEPTED
                         self.state = AcceptorState::ACCEPTED;
                     },
@@ -80,18 +82,19 @@ impl Acceptor {
     fn rcv_prepare(&mut self, msg:Message) -> () {
         match (msg.msg_type, msg.prepare) {
             (MessageType::PREPARE, Some(prepare)) => {
+                println!("Acceptor {} received prepare from Proposer {} with id={}.", self.pid, prepare.sender_pid, prepare.id);
                 match self.state {
                     AcceptorState::IDLE => {
                         // idle means no prepare has been received yet, so we can promise any received ID
                         self.max_id = prepare.id;
-                        self.snd_promise(prepare.sender.clone()); // also updates state to PROMISED
+                        self.snd_promise(prepare.sender.clone(), prepare.sender_pid); // also updates state to PROMISED
                     },
                     AcceptorState::PROMISED => {
                         // in promised state, we only send promise if ID is the highest we have seen so far
                         if prepare.id > self.max_id {
                             // can make promise
                             self.max_id = prepare.id;
-                            self.snd_promise(prepare.sender.clone());
+                            self.snd_promise(prepare.sender.clone(), prepare.sender_pid);
                         }
                         else {
                             // reject the prepare message
@@ -101,7 +104,7 @@ impl Acceptor {
                     AcceptorState::ACCEPTED => {
                         // accepted state means a proposal has already been accepted
                         // send a promise (which will include the accepted_id and accepted_val)
-                        self.snd_promise(prepare.sender.clone());
+                        self.snd_promise(prepare.sender.clone(), prepare.sender_pid);
                     }
                 }
             },
@@ -115,11 +118,12 @@ impl Acceptor {
             AcceptorState::PROMISED => {
                 match (msg.msg_type, msg.propose) {
                     (MessageType::PROPOSE, Some(proposal)) => {
+                        println!("Acceptor {} received proposal from Proposer {} with id={}, val={}.", self.pid, proposal.sender_pid, proposal.id, proposal.value);
                         // accept the proposal if it is using the highest ID for which we received a prepare
                         if proposal.id == self.max_id {
                             self.accepted_id = Some(proposal.id);
                             self.accepted_val = Some(proposal.value);
-                            self.snd_accept(proposal.sender.clone()); // also updates state to ACCEPTED
+                            self.snd_accept(proposal.sender.clone(), proposal.sender_pid); // also updates state to ACCEPTED
                         }
                         else {
                             // reject the proposal
@@ -178,7 +182,8 @@ impl Acceptor {
             accepted: None,
             rejected: Some(Rejected {
                 id: rejected_id,
-                max_id: self.max_id
+                max_id: self.max_id,
+                sender_pid: self.pid
             })
         }
     }
