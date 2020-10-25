@@ -37,8 +37,6 @@ TODO:
     + etc.
   * Think about rcv_reject in the proposer
   * Implement a basic learner that just has one variable whose value gets changed by accepted proposals
-  * Implement a basic client for testing
-    + probably requires a new message type, to signal a node that it should begin the protocol
 
 
 
