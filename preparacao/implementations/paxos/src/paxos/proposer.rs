@@ -89,6 +89,9 @@ impl Proposer {
                                     if av > highest_id {
                                         highest_id = ai;
                                         propose_val = av;
+                                        if highest_id > self.id {
+                                            self.id = highest_id;
+                                        }
                                     }
                                 },
                                 _ => {}
