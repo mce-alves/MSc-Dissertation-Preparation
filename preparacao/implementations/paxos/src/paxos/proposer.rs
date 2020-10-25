@@ -10,7 +10,7 @@ enum ProposerState {
     ACCEPTED
 }
 
-struct Proposer {
+pub struct Proposer {
     pid:i32,                               // id of the proposer
     state: ProposerState,                  // state / phase of the proposer 
     id: i32,                               // id that will be associated with a prepare/propose request
@@ -24,21 +24,21 @@ struct Proposer {
 
 impl Proposer {
 
-    fn new(n_id:i32, q_amount:i32, this_tx:mpsc::Sender<Message>, mship:Vec<mpsc::Sender<Message>>) -> Proposer {
+    pub fn new(t_pid:i32, t_quorum_amount:i32, t_tx:mpsc::Sender<Message>, t_membership:Vec<mpsc::Sender<Message>>) -> Proposer {
         Proposer {
-            pid: n_id,
+            pid: t_pid,
             state: ProposerState::IDLE,
             id: 0,
-            quorum_amount: q_amount,
-            tx: this_tx,
+            quorum_amount: t_quorum_amount,
+            tx: t_tx,
             rcvd_promises: vec!(),
             rcvd_accepts: vec!(),
-            membership: mship
+            membership: t_membership
         }
     }
 
     // send a PREPARE message
-    fn snd_prepare(&mut self) -> () {
+    pub fn snd_prepare(&mut self) -> () {
         match self.state {
             ProposerState::IDLE => {
                 // generate new high id
@@ -57,7 +57,7 @@ impl Proposer {
     }
 
     // send a PROPOSE message
-    fn snd_propose(&mut self, val:i32) -> () {
+    pub fn snd_propose(&mut self, val:i32) -> () {
         match self.state {
             ProposerState::PREPARED => {
                 let msg = self.create_propose_msg(val);
@@ -72,7 +72,7 @@ impl Proposer {
     }
 
     // process a received PROMISE message
-    fn rcv_promise(&mut self, msg:Message) -> () {
+    pub fn rcv_promise(&mut self, msg:Message) -> () {
         match self.state {
             ProposerState::PREPARED => {
                 match (msg.msg_type, msg.promise) {
@@ -117,7 +117,7 @@ impl Proposer {
     }
 
     // process a received ACCEPTED message
-    fn rcv_accept(&mut self, msg:Message) -> () {
+    pub fn rcv_accept(&mut self, msg:Message) -> () {
         match self.state {
             ProposerState::PROPOSED => {
                 match (msg.msg_type, msg.accepted) {
@@ -155,7 +155,7 @@ impl Proposer {
     }
 
     // process a received REJECTED message (for a PREPARE)
-    fn rcv_reject(&mut self, msg:Message) -> () {
+    pub fn rcv_reject(&mut self, msg:Message) -> () {
         match self.state { 
             ProposerState::PREPARED => {
                 match (msg.msg_type, msg.rejected) {

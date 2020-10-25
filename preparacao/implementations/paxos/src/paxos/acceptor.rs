@@ -10,7 +10,7 @@ enum AcceptorState {
     ACCEPTED
 }
 
-struct Acceptor {
+pub struct Acceptor {
     pid:i32,                                    // id of the acceptor
     state: AcceptorState,                       // state / phase of the acceptor 
     max_id: i32,                                // highest ID seen so far
@@ -23,20 +23,20 @@ struct Acceptor {
 
 impl Acceptor {
 
-    fn new(t_pid:i32, t_tx:mpsc::Sender<Message>, mship:Vec<mpsc::Sender<Message>>) -> Acceptor {
+    pub fn new(t_pid:i32, t_tx:mpsc::Sender<Message>, t_membership:Vec<mpsc::Sender<Message>>) -> Acceptor {
         Acceptor {
             pid: t_pid,
             state: AcceptorState::IDLE,
             max_id: -1,
             tx: t_tx,
-            membership: mship,
+            membership: t_membership,
             accepted_val: None,
             accepted_id: None
         }
     }
 
     // send PROMISE message to target
-    fn snd_promise(&mut self, target:mpsc::Sender<Message>, target_pid:i32) -> () {
+    pub fn snd_promise(&mut self, target:mpsc::Sender<Message>, target_pid:i32) -> () {
         // can send promise in any state, as long as max_id > -1 (as received some prepare)
         if self.max_id > -1 {
             target.send(self.create_promise_msg()).unwrap();
@@ -55,7 +55,7 @@ impl Acceptor {
     }
 
     // send ACCEPTED message to target
-    fn snd_accept(&mut self, target:mpsc::Sender<Message>, target_pid:i32) -> () {
+    pub fn snd_accept(&mut self, target:mpsc::Sender<Message>, target_pid:i32) -> () {
         match self.state {
             AcceptorState::ACCEPTED => println!("Acceptor {} has already accepted a proposal.", self.pid),
             AcceptorState::PROMISED => {
@@ -74,12 +74,12 @@ impl Acceptor {
     }
 
     // send REJECTED message to target
-    fn snd_reject(&mut self, rejected_id:i32, target:mpsc::Sender<Message>) -> () {
+    pub fn snd_reject(&mut self, rejected_id:i32, target:mpsc::Sender<Message>) -> () {
         target.send(self.create_reject_msg(rejected_id)).unwrap();
     }
 
     // process a received PREPARE message
-    fn rcv_prepare(&mut self, msg:Message) -> () {
+    pub fn rcv_prepare(&mut self, msg:Message) -> () {
         match (msg.msg_type, msg.prepare) {
             (MessageType::PREPARE, Some(prepare)) => {
                 println!("Acceptor {} received prepare from Proposer {} with id={}.", self.pid, prepare.sender_pid, prepare.id);
@@ -113,7 +113,7 @@ impl Acceptor {
     }
 
     // process a received PROPOSE message
-    fn rcv_propose(&mut self, msg:Message) -> () {
+    pub fn rcv_propose(&mut self, msg:Message) -> () {
         match self.state {
             AcceptorState::PROMISED => {
                 match (msg.msg_type, msg.propose) {
