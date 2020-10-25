@@ -35,3 +35,8 @@ TODO:
     + process 1 has ids X.1
     + process 2 has ids X.2
     + etc.
+  * Think about rcv_reject in the proposer
+
+
+
+
