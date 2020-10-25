@@ -59,8 +59,9 @@ pub struct Accepted {
 
 #[derive(Clone)]
 pub struct Rejected {
-    pub id:i32,     // ID that was rejected
-    pub max_id:i32  // highest ID that the acceptor had seen so far
+    pub id:i32,        // ID that was rejected
+    pub max_id:i32,    // highest ID that the acceptor had seen so far
+    pub sender_pid:i32 // identifier of the sender process
 }
 
 // Send a message to all processes in the membership
