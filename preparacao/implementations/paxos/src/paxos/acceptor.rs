@@ -12,10 +12,10 @@ enum AcceptorState {
 pub struct Acceptor {
     pid:i32,                                    // id of the acceptor
     state: AcceptorState,                       // state / phase of the acceptor 
-    max_id: i32,                                // highest ID seen so far
+    max_id: f32,                                // highest ID seen so far
     tx:mpsc::Sender<Message>,                   // this proposers TX
     accepted_val:Option<i32>,                   // already accepted value
-    accepted_id:Option<i32>                     // id of the propose of the accepted value
+    accepted_id:Option<f32>                     // id of the propose of the accepted value
 }
 
 
@@ -25,7 +25,7 @@ impl Acceptor {
         Acceptor {
             pid: t_pid,
             state: AcceptorState::IDLE,
-            max_id: -1,
+            max_id: -1.0,
             tx: t_tx,
             accepted_val: None,
             accepted_id: None
@@ -35,7 +35,7 @@ impl Acceptor {
     // send PROMISE message to target
     pub fn snd_promise(&mut self, target:mpsc::Sender<Message>, target_pid:i32) -> () {
         // can send promise in any state, as long as max_id > -1 (as received some prepare)
-        if self.max_id > -1 {
+        if self.max_id > -1.0 {
             println!("Acceptor {} sending promise with id={} to Proposer {}.", self.pid, self.max_id, target_pid);
             target.send(self.create_promise_msg()).unwrap();
             match self.state {
@@ -71,7 +71,7 @@ impl Acceptor {
     }
 
     // send REJECTED message to target
-    pub fn snd_reject(&mut self, rejected_id:i32, target:mpsc::Sender<Message>) -> () {
+    pub fn snd_reject(&mut self, rejected_id:f32, target:mpsc::Sender<Message>) -> () {
         target.send(self.create_reject_msg(rejected_id)).unwrap();
     }
 
@@ -153,7 +153,7 @@ impl Acceptor {
     }
 
     // create accept message
-    fn create_accept_msg(&mut self, accepted_id:i32, accepted_val:i32) -> Message {
+    fn create_accept_msg(&mut self, accepted_id:f32, accepted_val:i32) -> Message {
         Message {
             msg_type: MessageType::ACCEPTED,
             prepare: None,
@@ -170,7 +170,7 @@ impl Acceptor {
     }
 
     // create reject message
-    fn create_reject_msg(&mut self, rejected_id:i32) -> Message {
+    fn create_reject_msg(&mut self, rejected_id:f32) -> Message {
         Message {
             msg_type: MessageType::REJECTED,
             prepare: None,

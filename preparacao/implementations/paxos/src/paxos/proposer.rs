@@ -13,7 +13,7 @@ enum ProposerState {
 pub struct Proposer {
     pid:i32,                               // id of the proposer
     state: ProposerState,                  // state / phase of the proposer 
-    id: i32,                               // id that will be associated with a prepare/propose request
+    id: f32,                               // id that will be associated with a prepare/propose request
     quorum_amount: i32,                    // needed responses to achieve majority quorum
     tx: mpsc::Sender<Message>,             // this proposers TX
     rcvd_promises: Vec<Promise>,           // vec of PID of processes that sent a PROMISE
@@ -28,7 +28,7 @@ impl Proposer {
         Proposer {
             pid: t_pid,
             state: ProposerState::IDLE,
-            id: 0,
+            id: (t_pid as f32)/1000.0,
             quorum_amount: t_quorum_amount,
             tx: t_tx,
             rcvd_promises: vec!(),
@@ -42,7 +42,7 @@ impl Proposer {
         match self.state {
             ProposerState::IDLE => {
                 // generate new high id
-                self.id = self.id + 1;
+                self.id = self.id + 1.0;
                 let msg = self.create_prepare_msg();
                 // broadcast the PREPARE message
                 println!("Proposer {} broadcasting PREPARE wit id={}.", self.pid, self.id);
@@ -80,7 +80,7 @@ impl Proposer {
                         println!("Proposer {} received promise from Acceptor {} for id={}.", self.pid, promise.sender_pid, promise.id);
                         let mut already_received = false;
                         let mut propose_val = self.pid;
-                        let mut highest_id = -1;
+                        let mut highest_id = -1.0;
                         for m in self.rcvd_promises.as_slice() {
                             if m.sender_pid == promise.sender_pid {
                                 // already received promise from this process
@@ -89,11 +89,11 @@ impl Proposer {
                             // check if the promise said that the acceptor had already accepted another value
                             match (m.accepted_value, m.accepted_id) {
                                 (Some(av), Some(ai)) => {
-                                    if av > highest_id {
+                                    if ai > highest_id {
                                         highest_id = ai;
                                         propose_val = av;
-                                        if highest_id > self.id {
-                                            self.id = highest_id;
+                                        while highest_id > self.id {
+                                            self.id += 1.0;
                                         }
                                     }
                                 },
@@ -142,7 +142,7 @@ impl Proposer {
                             }
                             println!("Proposer {} has reached consensus on value {}.", self.pid, v);
                             self.state = ProposerState::ACCEPTED;
-                            // TODO : end here?
+                            // TODO : notify learners
                             // clear protocol data
                             self.clear_data();
                             // update state

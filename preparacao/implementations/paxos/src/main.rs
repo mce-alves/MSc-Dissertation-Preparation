@@ -6,7 +6,7 @@ use std::process;
 use std::io;
 
 #[path = "communication/message.rs"] mod message;
-#[path = "paxos/node.rs"] mod node;
+#[path = "paxos/agent.rs"] mod agent;
 
 static NUM_PROCESSES:i32   = 5;
 static MAJORITY_QUORUM:i32 = 3;
@@ -14,7 +14,7 @@ static MAJORITY_QUORUM:i32 = 3;
 
 fn main() {
     let mut channels:Vec<(mpsc::Sender<message::Message>, mpsc::Receiver<message::Message>)> = Vec::new();
-    let mut nodes = Vec::new();
+    let mut agents = Vec::new();
     let mut membership:Vec<mpsc::Sender<message::Message>> = Vec::new();
 
     // create communication channels
@@ -28,8 +28,8 @@ fn main() {
     for i in 0..NUM_PROCESSES {
         let (tx, rx) = channels.remove(0);
         // start one thread to act as each node
-        nodes.push(std::thread::spawn( {
-            let mut node = node::Node::new(i, MAJORITY_QUORUM, tx, rx, membership.clone());
+        agents.push(std::thread::spawn( {
+            let mut node = agent::Agent::new(i, MAJORITY_QUORUM, tx, rx, membership.clone());
             move || {
                 node.run();
             }

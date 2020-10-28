@@ -28,23 +28,23 @@ pub struct Message {
 
 #[derive(Clone)]
 pub struct Prepare {
-    pub id:i32,                       // ID that sender wants to use in a future proposal
+    pub id:f32,                       // ID that sender wants to use in a future proposal
     pub sender_pid:i32,               // identifier of the sender process
     pub sender:mpsc::Sender<Message>  // where to send the response to this message
 }
 
 #[derive(Clone)]
 pub struct Promise {
-    pub id:i32,                      // minimum ID the sender promises to accept
+    pub id:f32,                      // minimum ID the sender promises to accept
     pub sender_pid:i32,              // identifier of the sender process
-    pub accepted_id:Option<i32>,     // if already accepted a proposal, then Some(id) else None
+    pub accepted_id:Option<f32>,     // if already accepted a proposal, then Some(id) else None
     pub accepted_value:Option<i32>,  // if already accepted a proposal, then Some(value) else None
     pub sender:mpsc::Sender<Message> // where to send the response to this message
 }
 
 #[derive(Clone)]
 pub struct Propose {
-    pub id:i32,                      // ID associated with the proposal
+    pub id:f32,                      // ID associated with the proposal
     pub sender_pid:i32,              // identifier of the sender process
     pub value:i32,                   // proposed value
     pub sender:mpsc::Sender<Message> // where to send the response to this message
@@ -52,7 +52,7 @@ pub struct Propose {
 
 #[derive(Clone)]
 pub struct Accepted {
-    pub id:i32,                      // ID of the accepted proposal
+    pub id:f32,                      // ID of the accepted proposal
     pub sender_pid:i32,              // identifier of the sender process
     pub value:i32,                   // accepted value
     pub sender:mpsc::Sender<Message> // where to send the response to this message
@@ -60,8 +60,8 @@ pub struct Accepted {
 
 #[derive(Clone)]
 pub struct Rejected {
-    pub id:i32,        // ID that was rejected
-    pub max_id:i32,    // highest ID that the acceptor had seen so far
+    pub id:f32,        // ID that was rejected
+    pub max_id:f32,    // highest ID that the acceptor had seen so far
     pub sender_pid:i32 // identifier of the sender process
 }
 
