@@ -87,6 +87,7 @@ impl Proposer {
                                 already_received = true;
                             }
                             // check if the promise said that the acceptor had already accepted another value
+                            // Property 2c : for any V and N, if a proposal with value V and id N is issued, then there is a set of majority acceptors where (a) none accepted a proposal numbered less than N, or (b) V is the value of the highest-numbered proposal among all proposals accepted by the majority
                             match (m.accepted_value, m.accepted_id) {
                                 (Some(av), Some(ai)) => {
                                     if ai > highest_id {
@@ -163,14 +164,7 @@ impl Proposer {
                 match (msg.msg_type, msg.rejected) {
                     (MessageType::REJECTED, Some(rejected)) => {
                         println!("Proposer {} received rejected from Acceptor {} for id={}.", self.pid, rejected.sender_pid, rejected.id);
-                        // TODO : store unique rejects, and only restart if we get majority rejects?
-                        // means the prepare failed (because the sequence id was too low)
-                        //self.id = rejected.max_id;
-                        // clear protocol data
-                        //self.clear_data();
-                        // update state
-                        //self.state = ProposerState::IDLE;
-                        //try to PREPARE again ?
+                        // if we receive a rejected message, do nothing
                     },
                     _ => println!("Proposer {} received invalid REJECTED message.", self.pid)
                 }

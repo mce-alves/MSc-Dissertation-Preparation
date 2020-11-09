@@ -34,7 +34,7 @@ impl Acceptor {
 
     // send PROMISE message to target
     pub fn snd_promise(&mut self, target:mpsc::Sender<Message>, target_pid:i32) -> () {
-        // can send promise in any state, as long as max_id > -1 (as received some prepare)
+        // can send promise in any state, as long as max_id > -1 (has received some prepare)
         if self.max_id > -1.0 {
             println!("Acceptor {} sending promise with id={} to Proposer {}.", self.pid, self.max_id, target_pid);
             target.send(self.create_promise_msg()).unwrap();
@@ -100,7 +100,8 @@ impl Acceptor {
                     },
                     AcceptorState::ACCEPTED => {
                         // accepted state means a proposal has already been accepted
-                        // send a promise (which will include the accepted_id and accepted_val)
+                        // send a promise (which will include the accepted_id and accepted_val) so that the following proposals will use that same value in order to ensure P2b
+                        // Property 2b : if a proposal with value V is chosen, then every higher-numbered proposal issued by any proposer has value V
                         self.snd_promise(prepare.sender.clone(), prepare.sender_pid);
                     }
                 }
@@ -116,11 +117,16 @@ impl Acceptor {
                 match (msg.msg_type, msg.propose) {
                     (MessageType::PROPOSE, Some(proposal)) => {
                         println!("Acceptor {} received proposal from Proposer {} with id={}, val={}.", self.pid, proposal.sender_pid, proposal.id, proposal.value);
-                        // accept the proposal if it is using the highest ID for which we received a prepare
-                        if proposal.id == self.max_id {
+                        // accept the proposal if it contains the highest ID for which we received a prepare
+                        // P1a : an acceptor can accept a proposal with id N if it has not responded to a prepare request having number greater than N
+                        if proposal.id >= self.max_id {
+                            // SAFETY PROPERTY : only a value that has been proposed may be chosen
                             self.accepted_id = Some(proposal.id);
                             self.accepted_val = Some(proposal.value);
+                            self.max_id = proposal.id;
                             self.snd_accept(proposal.sender.clone(), proposal.sender_pid); // also updates state to ACCEPTED
+                            // since this updates the state to accepted, we guarantee another safety property
+                            // SAFETY PROPERTY : only a single value is chosen
                         }
                         else {
                             // reject the proposal
