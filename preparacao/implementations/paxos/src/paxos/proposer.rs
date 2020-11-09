@@ -78,35 +78,15 @@ impl Proposer {
                 match (msg.msg_type, msg.promise) {
                     (MessageType::PROMISE, Some(promise)) => {
                         println!("Proposer {} received promise from Acceptor {} for id={}.", self.pid, promise.sender_pid, promise.id);
-                        let mut already_received = false;
-                        let mut propose_val = self.pid;
-                        let mut highest_id = -1.0;
-                        for m in self.rcvd_promises.as_slice() {
-                            if m.sender_pid == promise.sender_pid {
-                                // already received promise from this process
-                                already_received = true;
-                            }
-                            // check if the promise said that the acceptor had already accepted another value
-                            // Property 2c : for any V and N, if a proposal with value V and id N is issued, then there is a set of majority acceptors where (a) none accepted a proposal numbered less than N, or (b) V is the value of the highest-numbered proposal among all proposals accepted by the majority
-                            match (m.accepted_value, m.accepted_id) {
-                                (Some(av), Some(ai)) => {
-                                    if ai > highest_id {
-                                        highest_id = ai;
-                                        propose_val = av;
-                                        while highest_id > self.id {
-                                            self.id += 1.0;
-                                        }
-                                    }
-                                },
-                                _ => {}
-                            }
-                        }
+
+                        let already_received = self.check_received_promises(promise.sender_pid);
                         if !already_received {
                             // add to received promises if not previously received
                             self.rcvd_promises.push(promise);
                         }
                         if self.rcvd_promises.len() as i32 >= self.quorum_amount {
-                            // proposer has received majority quorum of promises, therefore it can propose
+                            // proposer has received majority quorum of promises, therefore it can propose a value
+                            let propose_val = self.check_promises_contain_value(); // check if promises contain accepted value, and return the value that should be proposed
                             self.snd_propose(propose_val);
                         }
                     },
@@ -124,14 +104,9 @@ impl Proposer {
                 match (msg.msg_type, msg.accepted) {
                     (MessageType::ACCEPTED, Some(accepted)) => {
                         println!("Proposer {} received accepted from Acceptor {} for id={}, val={}.", self.pid, accepted.sender_pid, accepted.id, accepted.value);
-                        let mut already_received = false;
-                        // check if the message has already been received
-                        for m in self.rcvd_accepts.as_slice() {
-                            if m.sender_pid == accepted.sender_pid {
-                                already_received = true;
-                            }
-                        }
+                        let already_received = self.check_received_accepts(accepted.sender_pid);
                         let v = accepted.value;
+                        
                         if !already_received {
                             // add to the vec of received accepted messages
                             self.rcvd_accepts.push(accepted);
@@ -142,12 +117,8 @@ impl Proposer {
                                 assert!(m.value == v); // all accept messages need to accept the same value!
                             }
                             println!("Proposer {} has reached consensus on value {}.", self.pid, v);
-                            self.state = ProposerState::ACCEPTED;
-                            // TODO : notify learners
-                            // clear protocol data
-                            self.clear_data();
-                            // update state
-                            self.state = ProposerState::IDLE;
+                            self.state = ProposerState::ACCEPTED; // update state
+                            self.clear_data(); // clear protocol data
                         }
                     },
                     _ => println!("Proposer {} received invalid ACCEPTED message.", self.pid)
@@ -171,6 +142,52 @@ impl Proposer {
             },
             _ => println!("Proposer {} cannot receive REJECTED since it is not in PREPARED state.", self.pid)
         }
+    }
+
+    // checks if the proposer already received an accept message from this same acceptor (using it's pid)
+    fn check_received_accepts(&mut self, sender_pid:i32) -> bool {
+        for m in self.rcvd_accepts.as_slice() {
+            if m.sender_pid == sender_pid {
+                // already received accept from this process
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // checks if the proposer already received a promise from this same acceptor (using it's pid)
+    fn check_received_promises(&mut self, sender_pid:i32) -> bool {
+        for m in self.rcvd_promises.as_slice() {
+            if m.sender_pid == sender_pid {
+                // already received promise from this process
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // checks if any of the promises received contain an already accepted value (to ensure the P2c invariant)
+    // if they do, returns that value (which will be proposed), else returns this proposer's pid (which will be proposed)
+    fn check_promises_contain_value(&mut self) -> i32 {
+        let mut highest_id = -1.0;
+        let mut propose_val = self.pid;
+        for m in self.rcvd_promises.as_slice() {
+            // check if the promise said that the acceptor had already accepted another value
+            // Property 2c : for any V and N, if a proposal with value V and id N is issued, then there is a set of majority acceptors where (a) none accepted a proposal numbered less than N, or (b) V is the value of the highest-numbered proposal among all proposals accepted by the majority
+            match (m.accepted_value, m.accepted_id) {
+                (Some(av), Some(ai)) => {
+                    if ai > highest_id {
+                        highest_id = ai;
+                        propose_val = av;
+                        while highest_id > self.id {
+                            self.id += 1.0;
+                        }
+                    }
+                },
+                _ => {}
+            }
+        }
+        return propose_val;
     }
 
     // clear data used in the protocol
