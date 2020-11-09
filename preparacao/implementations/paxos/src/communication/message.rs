@@ -2,6 +2,8 @@
 
 use std::sync::mpsc;
 use rand::Rng;
+use std::thread;
+use std::time;
 
 static CHANCE_OF_FAILURE:i32 = 5; // chance of a message not being sent
 
@@ -75,8 +77,12 @@ pub fn broadcast(membership:&Vec<mpsc::Sender<Message>>, msg:Message) -> () {
 // Send a message to a process with a chance for the message to get lost
 pub fn send_msg(destination:&mpsc::Sender<Message>, msg:Message) -> () {
     let mut rng = rand::thread_rng();
+
+    let delay = rng.gen_range(1, 50);
+    thread::sleep(time::Duration::new(0, delay)); // add a delay to make it easier to test concurrent proposals
+    
     let roll = rng.gen_range(1, 100);
-    if roll > CHANCE_OF_FAILURE {
+    if roll > CHANCE_OF_FAILURE { // chance for the message to be "lost in the network"
         destination.send(msg).unwrap();
     }
 }

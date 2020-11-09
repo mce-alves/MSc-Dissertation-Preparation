@@ -64,7 +64,29 @@ pub fn test_nprocesses_single_proposal() {
 
 }
 
-// executes a test for NUM_PROCESSES and concurrent proposals
+// executes a test for NUM_PROCESSES and 10 concurrent proposals (requires NUM_PROCESSES >= 10)
 pub fn test_nprocesses_concurrent_proposals() {
-    // TODO
+    if NUM_PROCESSES < 10 {
+        println!("This test requires more than 10 agents (processes).");
+        return;
+    }
+
+    let (channels, membership) = create_channels_membership();
+    let agents = create_agents(channels, &membership);
+
+    // choose a random node to be the proposer, and send a BEGIN message to that node
+    for i in 0..10 {
+        membership[i].send(Message{
+            msg_type: MessageType::BEGIN,
+            prepare: None,
+            promise: None,
+            propose: None,
+            accepted: None,
+            rejected: None
+        }).unwrap();
+    }
+
+    for ag in agents {
+        let _ = ag.join();
+    }
 }
