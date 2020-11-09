@@ -45,7 +45,7 @@ impl Proposer {
                 self.id = self.id + 1.0;
                 let msg = self.create_prepare_msg();
                 // broadcast the PREPARE message
-                println!("Proposer {} broadcasting PREPARE wit id={}.", self.pid, self.id);
+                println!("Proposer {} broadcasting PREPARE with id={}.", self.pid, self.id);
                 broadcast((self.membership).clone(), msg);
                 // update state
                 self.state = ProposerState::PREPARED;
@@ -62,7 +62,7 @@ impl Proposer {
             ProposerState::PREPARED => {
                 let msg = self.create_propose_msg(val);
                 // broadcast the PROPOSE message
-                println!("Proposer {} broadcasting PROPOSE wit id={}, val={}.", self.pid, self.id, val);
+                println!("Proposer {} broadcasting PROPOSE with id={}, val={}.", self.pid, self.id, val);
                 broadcast(self.membership.clone(), msg);
                 // update state
                 self.state = ProposerState::PROPOSED;
@@ -106,7 +106,7 @@ impl Proposer {
                         println!("Proposer {} received accepted from Acceptor {} for id={}, val={}.", self.pid, accepted.sender_pid, accepted.id, accepted.value);
                         let already_received = self.check_received_accepts(accepted.sender_pid);
                         let v = accepted.value;
-                        
+
                         if !already_received {
                             // add to the vec of received accepted messages
                             self.rcvd_accepts.push(accepted);

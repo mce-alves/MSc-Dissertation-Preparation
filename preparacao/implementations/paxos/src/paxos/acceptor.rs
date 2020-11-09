@@ -60,8 +60,7 @@ impl Acceptor {
                     (Some(id), Some(val)) => {
                         println!("Acceptor {} sending accepted with id={}, val={} to Proposer {}.", self.pid, id, val,target_pid);
                         target.send(self.create_accept_msg(id, val)).unwrap();
-                        // update state to ACCEPTED
-                        self.state = AcceptorState::ACCEPTED;
+                        self.state = AcceptorState::ACCEPTED; // update state to ACCEPTED
                     },
                     _ => println!("Acceptor {} cannot send ACCEPTED because it is missing id or val.", self.pid)
                 }
