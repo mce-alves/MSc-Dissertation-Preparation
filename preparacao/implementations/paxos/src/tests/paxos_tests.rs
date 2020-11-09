@@ -48,38 +48,17 @@ pub fn test_nprocesses_single_proposal() {
 
     let agents = create_agents(channels, &membership);
 
-    // handle console input (commands to start proposals)
-        let mut input = String::new();
-        match io::stdin().read_line(&mut input) {
-            Ok(_) => {
-                let split_input:Vec<&str> = input.split_whitespace().collect();
-                if split_input.len() > 0 {
-                    if split_input[0].to_string() == "begin" {
-                        // choose a random node and send a BEGIN message to that node
-                        let mut rng = rand::thread_rng();
-                        let roll = rng.gen_range(0, NUM_PROCESSES);
-                        membership[roll as usize].send(Message{
-                            msg_type: MessageType::BEGIN,
-                            prepare: None,
-                            promise: None,
-                            propose: None,
-                            accepted: None,
-                            rejected: None
-                        }).unwrap();
-                    }
-                    else if split_input[0].to_string() == "exit" {
-                        process::exit(0);
-                    }
-                    else {
-                        println!("Invalid command.");
-                    }
-                }
-                else {
-                    println!("Invalid command.");
-                }
-            }
-            Err(error) => println!("error: {}", error),
-        }
+    // choose a random node to be the proposer, and send a BEGIN message to that node
+    let mut rng = rand::thread_rng();
+    let roll = rng.gen_range(0, NUM_PROCESSES);
+    membership[roll as usize].send(Message{
+        msg_type: MessageType::BEGIN,
+        prepare: None,
+        promise: None,
+        propose: None,
+        accepted: None,
+        rejected: None
+    }).unwrap();
 
     for ag in agents {
         let _ = ag.join();
