@@ -70,7 +70,7 @@ impl Acceptor {
     }
 
     // send REJECTED message to target
-    pub fn snd_reject(&mut self, rejected_id:f32, target:mpsc::Sender<Message>) -> () {
+    pub fn snd_reject(&self, rejected_id:f32, target:mpsc::Sender<Message>) -> () {
         target.send(self.create_reject_msg(rejected_id)).unwrap();
     }
 
@@ -83,25 +83,25 @@ impl Acceptor {
                     AcceptorState::IDLE => {
                         // idle means no prepare has been received yet, so we can promise any received ID
                         self.max_id = prepare.id;
-                        self.snd_promise(prepare.sender.clone(), prepare.sender_pid); // also updates state to PROMISED
+                        self.snd_promise(prepare.sender, prepare.sender_pid); // also updates state to PROMISED
                     },
                     AcceptorState::PROMISED => {
                         // in promised state, we only send promise if ID is the highest we have seen so far
                         if prepare.id > self.max_id {
                             // can make promise
                             self.max_id = prepare.id;
-                            self.snd_promise(prepare.sender.clone(), prepare.sender_pid);
+                            self.snd_promise(prepare.sender, prepare.sender_pid);
                         }
                         else {
                             // reject the prepare message
-                            self.snd_reject(prepare.id, prepare.sender.clone());
+                            self.snd_reject(prepare.id, prepare.sender);
                         }
                     },
                     AcceptorState::ACCEPTED => {
                         // accepted state means a proposal has already been accepted
                         // send a promise (which will include the accepted_id and accepted_val) so that the following proposals will use that same value in order to ensure P2b
                         // Property 2b : if a proposal with value V is chosen, then every higher-numbered proposal issued by any proposer has value V
-                        self.snd_promise(prepare.sender.clone(), prepare.sender_pid);
+                        self.snd_promise(prepare.sender, prepare.sender_pid);
                     }
                 }
             },
@@ -123,13 +123,13 @@ impl Acceptor {
                             self.accepted_id = Some(proposal.id);
                             self.accepted_val = Some(proposal.value);
                             self.max_id = proposal.id;
-                            self.snd_accept(proposal.sender.clone(), proposal.sender_pid); // also updates state to ACCEPTED
+                            self.snd_accept(proposal.sender, proposal.sender_pid); // also updates state to ACCEPTED
                             // since this updates the state to accepted, we guarantee another safety property
                             // SAFETY PROPERTY : only a single value is chosen
                         }
                         else {
                             // reject the proposal
-                            self.snd_reject(proposal.id, proposal.sender.clone());
+                            self.snd_reject(proposal.id, proposal.sender);
                         }
                     },
                     _ => println!("Acceptor {} received invalid PROPOSE message.", self.pid)
@@ -140,7 +140,7 @@ impl Acceptor {
     }
 
     // create promise message
-    fn create_promise_msg(&mut self) -> Message {
+    fn create_promise_msg(&self) -> Message {
         Message {
             msg_type: MessageType::PROMISE,
             prepare: None,
@@ -158,7 +158,7 @@ impl Acceptor {
     }
 
     // create accept message
-    fn create_accept_msg(&mut self, accepted_id:f32, accepted_val:i32) -> Message {
+    fn create_accept_msg(&self, accepted_id:f32, accepted_val:i32) -> Message {
         Message {
             msg_type: MessageType::ACCEPTED,
             prepare: None,
@@ -175,7 +175,7 @@ impl Acceptor {
     }
 
     // create reject message
-    fn create_reject_msg(&mut self, rejected_id:f32) -> Message {
+    fn create_reject_msg(&self, rejected_id:f32) -> Message {
         Message {
             msg_type: MessageType::REJECTED,
             prepare: None,

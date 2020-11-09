@@ -66,14 +66,14 @@ pub struct Rejected {
 }
 
 // Send a message to all processes in the membership
-pub fn broadcast(membership:Vec<mpsc::Sender<Message>>, msg:Message) -> () {
+pub fn broadcast(membership:&Vec<mpsc::Sender<Message>>, msg:Message) -> () {
     for member in membership {
         send_msg(member, msg.clone());
     }
 }
 
 // Send a message to a process with a chance for the message to get lost
-pub fn send_msg(destination:mpsc::Sender<Message>, msg:Message) -> () {
+pub fn send_msg(destination:&mpsc::Sender<Message>, msg:Message) -> () {
     let mut rng = rand::thread_rng();
     let roll = rng.gen_range(1, 100);
     if roll > CHANCE_OF_FAILURE {

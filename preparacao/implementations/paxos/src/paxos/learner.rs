@@ -23,11 +23,6 @@ impl Learner {
         }
     }
 
-    // get the value currently stored by the learner
-    //pub fn get_value(&mut self) -> i32 {
-    //    self.current_value
-    //}
-
     // process an incoming ACCEPTED message
     pub fn rcv_accept(&mut self, msg:Message) -> () {
         match (msg.clone().msg_type, msg.clone().accepted) {
@@ -46,10 +41,10 @@ impl Learner {
     }
 
     // propagate an ACCEPTED message to all the other learners in the membership
-    pub fn propagate_accepted_msg(&mut self, msg:Message) -> () {
+    pub fn propagate_accepted_msg(&self, msg:Message) -> () {
         if self.is_distinguished {
             println!("Learner {} (distinguished) is propagating ACCEPTED message to other learners.", self.pid);
-            broadcast(self.membership.clone(), msg);
+            broadcast(&self.membership, msg);
         }
         else {
             println!("Learner {} cannot propagate ACCEPTED message because it is not distinguished.", self.pid);

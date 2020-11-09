@@ -3,8 +3,6 @@
 use std::sync::mpsc;
 use std::thread::JoinHandle;
 use rand::Rng;
-use std::process;
-use std::io;
 
 use crate::message::*;
 use crate::agent;

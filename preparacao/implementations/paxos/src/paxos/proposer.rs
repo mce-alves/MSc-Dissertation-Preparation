@@ -46,7 +46,7 @@ impl Proposer {
                 let msg = self.create_prepare_msg();
                 // broadcast the PREPARE message
                 println!("Proposer {} broadcasting PREPARE with id={}.", self.pid, self.id);
-                broadcast((self.membership).clone(), msg);
+                broadcast(&self.membership, msg);
                 // update state
                 self.state = ProposerState::PREPARED;
             },
@@ -63,7 +63,7 @@ impl Proposer {
                 let msg = self.create_propose_msg(val);
                 // broadcast the PROPOSE message
                 println!("Proposer {} broadcasting PROPOSE with id={}, val={}.", self.pid, self.id, val);
-                broadcast(self.membership.clone(), msg);
+                broadcast(&self.membership, msg);
                 // update state
                 self.state = ProposerState::PROPOSED;
             },
@@ -124,12 +124,12 @@ impl Proposer {
                     _ => println!("Proposer {} received invalid ACCEPTED message.", self.pid)
                 }
             },
-            _ => println!("Proposer {} cannot receive ACCEPTED since it is not in PROPOSED state.", self.pid)
+            _ => {}
         }
     }
 
     // process a received REJECTED message (for a PREPARE)
-    pub fn rcv_reject(&mut self, msg:Message) -> () {
+    pub fn rcv_reject(&self, msg:Message) -> () {
         match self.state { 
             ProposerState::PREPARED => {
                 match (msg.msg_type, msg.rejected) {
@@ -145,7 +145,7 @@ impl Proposer {
     }
 
     // checks if the proposer already received an accept message from this same acceptor (using it's pid)
-    fn check_received_accepts(&mut self, sender_pid:i32) -> bool {
+    fn check_received_accepts(&self, sender_pid:i32) -> bool {
         for m in self.rcvd_accepts.as_slice() {
             if m.sender_pid == sender_pid {
                 // already received accept from this process
@@ -156,7 +156,7 @@ impl Proposer {
     }
 
     // checks if the proposer already received a promise from this same acceptor (using it's pid)
-    fn check_received_promises(&mut self, sender_pid:i32) -> bool {
+    fn check_received_promises(&self, sender_pid:i32) -> bool {
         for m in self.rcvd_promises.as_slice() {
             if m.sender_pid == sender_pid {
                 // already received promise from this process
@@ -197,7 +197,7 @@ impl Proposer {
     }
 
     // create a prepare message
-    fn create_prepare_msg(&mut self) -> Message {
+    fn create_prepare_msg(&self) -> Message {
         Message{
             msg_type: MessageType::PREPARE,
             prepare: Some(Prepare{
@@ -213,7 +213,7 @@ impl Proposer {
     }
 
     // create a propose message with value <v>
-    fn create_propose_msg(&mut self, v:i32) -> Message {
+    fn create_propose_msg(&self, v:i32) -> Message {
         Message{
             msg_type: MessageType::PROPOSE,
             prepare: None,

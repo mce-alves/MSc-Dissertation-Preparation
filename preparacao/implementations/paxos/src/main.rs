@@ -25,7 +25,7 @@ fn main() {
         "paxos" => {
             match test.to_lowercase().as_str() {
                 "single" => tests::test_nprocesses_single_proposal(),
-                "concurrent" => println!("concurrent"),
+                "concurrent" => tests::test_nprocesses_concurrent_proposals(),
                 _ => println!("Invalid test.")
             } 
         },
