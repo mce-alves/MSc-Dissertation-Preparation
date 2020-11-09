@@ -7,8 +7,8 @@ use rand::Rng;
 use crate::message::*;
 use crate::agent;
 
-static NUM_PROCESSES:i32   = 5;
-static MAJORITY_QUORUM:i32 = 3;
+static NUM_PROCESSES:i32   = 100;
+static MAJORITY_QUORUM:i32 = 51;
 
 // create channels that agents will use to communicate, and return them
 fn create_channels_membership() -> (Vec<(mpsc::Sender<Message>, mpsc::Receiver<Message>)>,Vec<mpsc::Sender<Message>>) {
