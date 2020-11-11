@@ -7,6 +7,8 @@ use std::env;
 #[path = "communication/message.rs"] mod message;
 #[path = "paxos/agent.rs"] mod agent;
 
+#[path = "raft/server.rs"] mod raft;
+
 fn main() {
     let args:Vec<String> = env::args().collect();
 
