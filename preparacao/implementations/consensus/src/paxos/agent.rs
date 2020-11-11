@@ -1,7 +1,7 @@
 // mca @ 49828
 
 use std::sync::mpsc;
-use crate::message::*;
+use crate::pmessage::*;
 
 mod acceptor;
 mod learner;

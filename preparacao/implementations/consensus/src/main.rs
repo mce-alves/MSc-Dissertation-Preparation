@@ -4,9 +4,10 @@ use std::process;
 use std::env;
 
 #[path = "tests/paxos_tests.rs"] mod tests;
-#[path = "communication/message.rs"] mod message;
+#[path = "communication/paxos_message.rs"] mod pmessage;
 #[path = "paxos/agent.rs"] mod agent;
 
+#[path = "communication/raft_message.rs"] mod rmessage;
 #[path = "raft/server.rs"] mod raft;
 
 fn main() {

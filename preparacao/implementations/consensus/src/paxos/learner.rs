@@ -1,7 +1,7 @@
 // mca @ 49828
 
 use std::sync::mpsc;
-use crate::message::*;
+use crate::pmessage::*;
 
 pub struct Learner {
     pid: i32,                              // id of the learner
