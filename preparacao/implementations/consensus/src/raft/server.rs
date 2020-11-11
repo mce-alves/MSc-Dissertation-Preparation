@@ -63,10 +63,12 @@ impl Server {
     pub fn candidate() {}
 
     // executes while this server is in LEADER state
-    pub fn leader() {}
+    pub fn leader(&mut self) {
+        
+    }
 
     /*
-    RPC initiated by the leaders, to replicate log entries and to act as a heartbeat
+    RPC initiated by the leader, to replicate log entries and to act as a heartbeat
       leader_term         -> leader's term
       leader_pid          -> pid of the leader
       prev_log_index      -> index of log entry immediately preceding new ones
@@ -74,10 +76,10 @@ impl Server {
       entries             -> log entries to store (empty for heartbeat)
       leader_commit_index -> leader's commit_index  
     */
-    pub fn append_entries(&mut self, leader_term:i32, leader_pid:i32, prev_log_index:i32, prev_log_term:i32, entries:&Vec<Entry>, leader_commit_index:i32) -> (i32, bool) {
-        if leader_term < self.current_term { return (self.current_term, false) }           // "old" message
+    pub fn process_append_entries_request(&mut self, leader_term:i32, leader_pid:i32, prev_log_index:i32, prev_log_term:i32, entries:&Vec<Entry>, leader_commit_index:i32) -> (i32, bool, i32) {
+        if leader_term < self.current_term { return (self.current_term, false, 0) }        // "old" message
         self.update_term(leader_term);                                                     // I1, I2
-        if (self.log.len() as i32) < prev_log_index { return (self.current_term, false) }  // missing entries
+        if (self.log.len() as i32) < prev_log_index { return (self.current_term, false, 0) }  // missing entries
         if self.log[prev_log_index as usize].term != leader_term {                         // conflicting entries
             // remove the conflicting log entry, and all that follow it
             let mut i = self.log.len();
@@ -93,7 +95,24 @@ impl Server {
             self.commit_index = cmp::min(leader_commit_index, (self.log.len()-1) as i32); // TODO : check if -1 is correct
         }
 
-        return (self.current_term, true); // TODO : correct return for the term?
+        return (self.current_term, true, self.log.len() as i32); // TODO : correct return for the term?
+    }
+
+    // process the response from an append entries request
+    pub fn process_append_entries_response(&mut self, follower_term:i32, follower_pid:i32, success:bool, match_index:i32) {
+        self.update_term(follower_term);
+        match self.role {
+            Role::LEADER => {
+                if success {
+                    self.match_index[follower_pid as usize] = match_index;
+                    self.next_index[follower_pid as usize] = match_index + 1;
+                }
+                else {
+                    self.next_index[follower_pid as usize] = cmp::max(0, self.next_index[follower_pid as usize] - 1);
+                }
+            },
+            _ => println!("Server {} cannot process append entries response since it is not the leader.", self.pid)
+        }
     }
 
     /*

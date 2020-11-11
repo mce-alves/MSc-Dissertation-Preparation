@@ -64,6 +64,7 @@ pub struct ResponseAppend {
     pub follower_term:i32,            // follower's term
     pub follower_pid:i32,             // pid of the follower sending the response
     pub success:bool,                 // true if the follower appended the entries to it's log, false otherwise
+    pub match_index:i32,              // latest index of follower
     pub sender:mpsc::Sender<Message>  // where to send the response to this message
 }
 
