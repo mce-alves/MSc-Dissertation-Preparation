@@ -12,11 +12,11 @@ static CHANCE_OF_FAILURE:i32 = 5; // chance of a message not being sent
 
 #[derive(Clone)]
 pub enum MessageType {
-    REQ_VOTE,   // request to execute request_vote operation
-    RES_VOTE,   // result of executing request_vote operation
-    REQ_APPEND, // request to execute append_entries operation
-    RES_APPEND, // result of executing append_entries operation
-    REQ_OP      // request of to execute an operation by a client
+    REQVOTE,   // request to execute request_vote operation
+    RESVOTE,   // result of executing request_vote operation
+    REQAPPEND, // request to execute append_entries operation
+    RESAPPEND, // result of executing append_entries operation
+    REQOP      // request of to execute an operation by a client
 }
 
 #[derive(Clone)]

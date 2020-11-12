@@ -309,31 +309,31 @@ impl Peer {
         match msg {
             Ok(m) => {
                 match m.msg_type {
-                    rmessage::MessageType::REQ_APPEND => {
+                    rmessage::MessageType::REQAPPEND => {
                         match m.request_append {
                             Some(req) => self.process_append_entries_request(req.leader_term, req.leader_pid, req.prev_log_index, req.prev_log_term, &req.entries, req.leader_commit_index),
                             None => println!("Peer {} received invalid append entries request.", self.pid)
                         }
                     },
-                    rmessage::MessageType::RES_APPEND => {
+                    rmessage::MessageType::RESAPPEND => {
                         match m.response_append {
                             Some(req) => self.process_append_entries_response(req),
                             None => println!("Peer {} received invalid append entries response.", self.pid)
                         }
                     },
-                    rmessage::MessageType::REQ_VOTE => {
+                    rmessage::MessageType::REQVOTE => {
                         match m.request_vote {
                             Some(req) => self.request_vote(req.candidate_term, req.candidate_pid, req.last_log_index, req.last_log_term),
                             None => println!("Peer {} received invalid vote request.", self.pid)
                         }
                     },
-                    rmessage::MessageType::RES_VOTE => {
+                    rmessage::MessageType::RESVOTE => {
                         match m.response_vote {
                             Some(req) => self.process_req_vote_response(req),
                             None => println!("Peer {} received invalid vote reponse.", self.pid)
                         }
                     },
-                    rmessage::MessageType::REQ_OP => {
+                    rmessage::MessageType::REQOP => {
                         // TODO : not yet implemented
                     }
                 }
@@ -348,7 +348,7 @@ impl Peer {
     // TODO : re-checks fields (receive the necessary values as arguments)
     fn create_request_vote_msg(&self) -> rmessage::Message {
         rmessage::Message {
-            msg_type: rmessage::MessageType::REQ_VOTE,
+            msg_type: rmessage::MessageType::REQVOTE,
             request_append: None,
             request_operation: None,
             response_vote: None,
@@ -366,7 +366,7 @@ impl Peer {
     // TODO : re-check fields (receive the necessary values as arguments)
     fn create_append_entries_req_msg(&self, new_entries:Vec<Entry>, pli:usize, plt:i32) -> rmessage::Message {
         rmessage::Message {
-            msg_type: rmessage::MessageType::REQ_APPEND,
+            msg_type: rmessage::MessageType::REQAPPEND,
             request_append: Some(rmessage::RequestAppend {
                 leader_term:self.current_term,
                 leader_pid:self.pid,
@@ -386,7 +386,7 @@ impl Peer {
     // TODO : re-check fields (receive the necessary values as arguments)
     fn create_response_vote_msg(&self, c_pid:i32, vote:bool) -> rmessage::Message {
         rmessage::Message {
-            msg_type: rmessage::MessageType::RES_VOTE,
+            msg_type: rmessage::MessageType::RESVOTE,
             request_append: None,
             request_operation: None,
             response_vote: Some(rmessage::ResponseVote {
@@ -404,7 +404,7 @@ impl Peer {
     // TODO : re-check fields (receive the necessary values as arguments)
     fn create_response_append_msg(&self, l_pid:i32, res:bool, m_index:usize, ci:i32) -> rmessage::Message {
         rmessage::Message {
-            msg_type: rmessage::MessageType::RES_VOTE,
+            msg_type: rmessage::MessageType::RESAPPEND,
             request_append: None,
             request_operation: None,
             response_vote: None,
@@ -423,7 +423,7 @@ impl Peer {
     // TODO : re-check fields (receive the necessary values as arguments)
     fn create_request_operation_msg(&self, op:String) -> rmessage::Message {
         rmessage::Message {
-            msg_type: rmessage::MessageType::RES_VOTE,
+            msg_type: rmessage::MessageType::REQOP,
             request_append: None,
             request_operation: Some(rmessage::RequestOperation {
                 operation:op,
