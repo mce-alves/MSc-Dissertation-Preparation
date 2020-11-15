@@ -39,10 +39,8 @@ impl Agent {
                 MessageType::PREPARE => self.acceptor.rcv_prepare(msg),
                 MessageType::PROMISE => self.proposer.rcv_promise(msg),
                 MessageType::PROPOSE => self.acceptor.rcv_propose(msg),
-                MessageType::ACCEPTED => {
-                    self.proposer.rcv_accept(msg.clone());
-                    self.learner.rcv_accept(msg);
-                },
+                MessageType::ACCEPTED => self.proposer.rcv_accept(msg),
+                MessageType::CONSENSUS => self.learner.rcv_accept(msg),
                 MessageType::REJECTED => self.proposer.rcv_reject(msg),
                 MessageType::BEGIN => {
                     self.proposer.snd_prepare();

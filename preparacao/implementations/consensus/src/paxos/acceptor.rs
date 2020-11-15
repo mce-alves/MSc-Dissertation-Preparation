@@ -153,7 +153,8 @@ impl Acceptor {
             }),
             propose: None,
             accepted: None,
-            rejected: None
+            rejected: None,
+            consensus: None
         }
     }
 
@@ -170,7 +171,8 @@ impl Acceptor {
                 sender: self.tx.clone(),
                 value: accepted_val
             }),
-            rejected: None
+            rejected: None,
+            consensus: None
         }
     }
 
@@ -182,6 +184,7 @@ impl Acceptor {
             promise: None,
             propose: None,
             accepted: None,
+            consensus: None,
             rejected: Some(Rejected {
                 id: rejected_id,
                 max_id: self.max_id,

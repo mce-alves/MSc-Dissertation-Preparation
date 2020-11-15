@@ -71,6 +71,14 @@ impl Proposer {
         }
     }
 
+    // informs the learner that this proposer has gotten consensus on a value
+    pub fn inform_learners(&self, id:f32, value:i32) {
+        match self.state {
+            ProposerState::ACCEPTED => broadcast(&self.membership, self.create_consensus_msg(id, value)),
+            _ => println!("Proposer {} cannot inform learners because it is not in ACCEPTED state.", self.pid)
+        }
+    }
+
     // process a received PROMISE message
     pub fn rcv_promise(&mut self, msg:Message) -> () {
         match self.state {
@@ -105,7 +113,7 @@ impl Proposer {
                     (MessageType::ACCEPTED, Some(accepted)) => {
                         println!("Proposer {} received accepted from Acceptor {} for id={}, val={}.", self.pid, accepted.sender_pid, accepted.id, accepted.value);
                         let already_received = self.check_received_accepts(accepted.sender_pid);
-                        let v = accepted.value;
+                        let v = accepted.value; let id = accepted.id;
 
                         if !already_received {
                             // add to the vec of received accepted messages
@@ -118,6 +126,7 @@ impl Proposer {
                             }
                             println!("Proposer {} has reached consensus on value {}.", self.pid, v);
                             self.state = ProposerState::ACCEPTED; // update state
+                            self.inform_learners(id, v);
                             self.clear_data(); // clear protocol data
                         }
                     },
@@ -208,7 +217,8 @@ impl Proposer {
             promise: None,
             propose: None,
             accepted: None,
-            rejected: None
+            rejected: None,
+            consensus: None
         }
     }
 
@@ -225,7 +235,24 @@ impl Proposer {
                 value: v
             }),
             accepted: None,
-            rejected: None
+            rejected: None,
+            consensus: None
+        }
+    }
+
+    // create a consensus message with id <id> and value <v>
+    fn create_consensus_msg(&self, t_id:f32, v:i32) -> Message {
+        Message{
+            msg_type: MessageType::CONSENSUS,
+            prepare: None,
+            promise: None,
+            propose: None,
+            accepted: None,
+            rejected: None,
+            consensus: Some(Consensus{
+                id: t_id,
+                value: v
+            })
         }
     }
 

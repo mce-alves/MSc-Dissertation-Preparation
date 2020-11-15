@@ -7,8 +7,8 @@ use rand::Rng;
 use crate::pmessage::*;
 use crate::agent;
 
-static NUM_PROCESSES:i32   = 5;
-static MAJORITY_QUORUM:i32 = 3;
+static NUM_PROCESSES:i32   = 100;
+static MAJORITY_QUORUM:i32 = 51;
 
 // create channels that agents will use to communicate, and return them
 fn create_channels_membership() -> (Vec<(mpsc::Sender<Message>, mpsc::Receiver<Message>)>,Vec<mpsc::Sender<Message>>) {
@@ -55,7 +55,8 @@ pub fn test_nprocesses_single_proposal() {
         promise: None,
         propose: None,
         accepted: None,
-        rejected: None
+        rejected: None,
+        consensus: None
     }).unwrap();
 
     for ag in agents {
@@ -82,7 +83,8 @@ pub fn test_nprocesses_concurrent_proposals() {
             promise: None,
             propose: None,
             accepted: None,
-            rejected: None
+            rejected: None,
+            consensus: None
         }).unwrap();
     }
 

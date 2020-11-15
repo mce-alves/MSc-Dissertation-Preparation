@@ -9,7 +9,6 @@ use std::env;
 
 #[path = "raft/messages.rs"] mod rmessage;
 #[path = "raft/peer.rs"] mod raft;
-//#[path = "raft/handler.rs"] mod handler;
 
 fn main() {
     let args:Vec<String> = env::args().collect();

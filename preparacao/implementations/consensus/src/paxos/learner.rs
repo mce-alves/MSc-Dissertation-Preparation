@@ -25,8 +25,8 @@ impl Learner {
 
     // process an incoming ACCEPTED message
     pub fn rcv_accept(&mut self, msg:Message) -> () {
-        match (msg.clone().msg_type, msg.clone().accepted) {
-            (MessageType::ACCEPTED, Some(acc_msg)) => {
+        match (msg.clone().msg_type, msg.clone().consensus) {
+            (MessageType::CONSENSUS, Some(acc_msg)) => {
                 if acc_msg.id > self.last_accepted_id {
                     self.last_accepted_id = acc_msg.id;
                     self.current_value = acc_msg.value;

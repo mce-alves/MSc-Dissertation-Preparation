@@ -15,7 +15,8 @@ pub enum MessageType {
     PROMISE,
     PROPOSE,
     ACCEPTED,
-    REJECTED
+    REJECTED,
+    CONSENSUS
 }
 
 #[derive(Clone)]
@@ -25,7 +26,8 @@ pub struct Message {
     pub promise:  Option<Promise>,  // Promise  message struct or none
     pub propose:  Option<Propose>,  // Propose  message struct or none
     pub accepted: Option<Accepted>, // Accepted message struct or none
-    pub rejected: Option<Rejected>  // Rejected message struct or none
+    pub rejected: Option<Rejected>, // Rejected message struct or none
+    pub consensus: Option<Consensus>// Consensus message struct or none
 }
 
 #[derive(Clone)]
@@ -65,6 +67,12 @@ pub struct Rejected {
     pub id:f32,        // ID that was rejected
     pub max_id:f32,    // highest ID that the acceptor had seen so far
     pub sender_pid:i32 // identifier of the sender process
+}
+
+#[derive(Clone)]
+pub struct Consensus {
+    pub id:f32,                      // ID of the accepted proposal
+    pub value:i32                    // accepted value
 }
 
 // Send a message to all processes in the membership
