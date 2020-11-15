@@ -40,10 +40,9 @@ pub struct RequestVote {
 
 #[derive(Clone)]
 pub struct ResponseVote {
-    pub candidate_pid:i32,            // pid of the candidate that requested the vote
     pub follower_term:i32,            // follower's term
     pub follower_pid:i32,             // pid of the follower sending the response
-    pub vote_granted:bool,             // true if the follower voted for the candidate, false otherwise
+    pub vote_granted:bool,            // true if the follower voted for the candidate, false otherwise
     pub sender:mpsc::Sender<Message>  // where to send the response to this message
 }
 
