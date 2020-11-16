@@ -10,7 +10,7 @@ use crate::raft::*;
 static CHANCE_OF_FAILURE:i32 = 5; // chance of a message not being sent
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum MessageType {
     REQVOTE,   // request to execute request_vote operation
     RESVOTE,   // result of executing request_vote operation
@@ -19,7 +19,7 @@ pub enum MessageType {
     REQOP      // request of to execute an operation by a client
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Message {
     pub msg_type: MessageType,                       // Type of the message content. If type is req_vote, then request_vote should be SOME and the others None, etc.
     pub request_vote:  Option<RequestVote>,          // RequestVote  message struct or none
@@ -29,16 +29,16 @@ pub struct Message {
     pub request_operation:  Option<RequestOperation> // RequestVote  message struct or none
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RequestVote {
     pub candidate_term:i32,           // candidate's term
     pub candidate_pid:i32,            // pid of the candidate requesting the vote
-    pub last_log_index:usize,           // index of the candidate's last log entry
+    pub last_log_index:i32,           // index of the candidate's last log entry
     pub last_log_term:i32,            // term of the candidate's last log entry
     pub sender:mpsc::Sender<Message>  // where to send the response to this message
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ResponseVote {
     pub follower_term:i32,            // follower's term
     pub follower_pid:i32,             // pid of the follower sending the response
@@ -46,31 +46,30 @@ pub struct ResponseVote {
     pub sender:mpsc::Sender<Message>  // where to send the response to this message
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RequestAppend {
     pub leader_term:i32,                  // leader's term
     pub leader_pid:i32,                   // pid of the leader
-    pub prev_log_index:usize,               // index of log entry immediately preceding new ones
+    pub prev_log_index:i32,               // index of log entry immediately preceding new ones
     pub prev_log_term:i32,                // term of prev_log_index entry
     pub entries:Vec<Entry>,               // log entries to store (empty for heartbeat)
-    pub leader_commit_index:usize,          // leader's commit_index
+    pub leader_commit_index:i32,          // leader's commit_index
     pub sender:mpsc::Sender<Message>      // where to send the response to this message
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ResponseAppend {
     pub leader_pid:i32,               // pid of the leader that requested the vote
     pub follower_term:i32,            // follower's term
     pub follower_pid:i32,             // pid of the follower sending the response
     pub success:bool,                 // true if the follower appended the entries to it's log, false otherwise
-    pub match_index:usize,              // latest index of follower
+    pub match_index:i32,              // latest index of follower
     pub sender:mpsc::Sender<Message>  // where to send the response to this message
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RequestOperation {
-    pub operation:String,             // the operation to execute
-    pub sender:mpsc::Sender<Message>  // where to send the response to this message
+    pub operation:String  // the operation to execute
 }
 
 /// Functions

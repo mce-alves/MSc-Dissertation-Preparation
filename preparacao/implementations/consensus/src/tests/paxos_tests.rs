@@ -11,7 +11,7 @@ static NUM_PROCESSES:i32   = 100;
 static MAJORITY_QUORUM:i32 = 51;
 
 // create channels that agents will use to communicate, and return them
-fn create_channels_membership() -> (Vec<(mpsc::Sender<Message>, mpsc::Receiver<Message>)>,Vec<mpsc::Sender<Message>>) {
+pub fn create_channels_membership() -> (Vec<(mpsc::Sender<Message>, mpsc::Receiver<Message>)>,Vec<mpsc::Sender<Message>>) {
     let mut channels:Vec<(mpsc::Sender<Message>, mpsc::Receiver<Message>)> = Vec::new();
     let mut membership:Vec<mpsc::Sender<Message>> = Vec::new();
 
@@ -25,7 +25,7 @@ fn create_channels_membership() -> (Vec<(mpsc::Sender<Message>, mpsc::Receiver<M
 }
 
 // create the agents that will be involved in the protocol
-fn create_agents(mut channels:Vec<(mpsc::Sender<Message>, mpsc::Receiver<Message>)>, membership:&Vec<mpsc::Sender<Message>>) -> Vec<JoinHandle<()>> {
+pub fn create_agents(mut channels:Vec<(mpsc::Sender<Message>, mpsc::Receiver<Message>)>, membership:&Vec<mpsc::Sender<Message>>) -> Vec<JoinHandle<()>> {
     let mut agents = Vec::new();
     for i in 0..NUM_PROCESSES {
         let (tx, rx) = channels.remove(0);

@@ -18,7 +18,7 @@ pub enum Role {
     FOLLOWER   // means this server is a follower
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Entry {
     operation : String, // operation to be replicated
     term : i32          // term when entry was received by leader
@@ -32,10 +32,10 @@ pub struct Peer {
     granted_votes_rcvd: Vec<i32>,// pid of the peers that voted for this candidate's vote request
     log : Vec<Entry>,            // each entry is an operation for the state machine, and term when entry was received by leader
     role: Role,                  // this server's role
-    commit_index : usize,        // index of highest log entry known to be committed (initialized at 0)
-    last_applied : usize,        // index of highest log entry applied to the state machine (initialized at 0)
-    next_index : Vec<usize>,     // for each server, index of the next log entry to send to that server (init 0)
-    match_index : Vec<usize>,    // for each server, index of highest log entry known to be replicated on that server (init 1)
+    commit_index : i32,          // index of highest log entry known to be committed (initialized at -1)
+    last_applied : i32,          // index of highest log entry applied to the state machine (initialized at -1)
+    next_index : Vec<i32>,       // for each server, index of the next log entry to send to that server (init 0)
+    match_index : Vec<i32>,      // for each server, index of highest log entry known to be replicated on that server (init -1)
     election_timeout: Option<SystemTime>,  // the system time when an election timeout should occur
     heartbeat_timeout: Option<SystemTime>, // the system time when the leader should send a heartbeat
     rx: mpsc::Receiver<rmessage::Message>,           // this peer's RX
@@ -54,11 +54,11 @@ impl Peer {
             votes_rcvd: vec!(),
             granted_votes_rcvd: vec!(),
             log: vec!(),
-            commit_index: 0,
-            last_applied: 0,
-            next_index: vec![1, t_membership.len()],
-            match_index: vec![0, t_membership.len()],
-            election_timeout: SystemTime::now().checked_add(Duration::from_secs(ELECTION_TIMEOUT)),
+            commit_index: -1,
+            last_applied: -1,
+            next_index: vec![0; t_membership.len()],
+            match_index: vec![-1; t_membership.len()],
+            election_timeout: SystemTime::now().checked_add(Duration::from_secs(ELECTION_TIMEOUT+(t_pid as u64))),
             heartbeat_timeout: SystemTime::now().checked_add(Duration::from_secs(HEARTBEAT_TIMEOUT)),
             rx: t_rx,
             tx: t_tx,
@@ -90,6 +90,8 @@ impl Peer {
     fn send_entries(&mut self) -> () {
         match self.role {
             Role::LEADER => {
+                self.update_heartbeat_timeout();
+                println!("Peer {} is sending entries.", self.pid);
                 for i in 0..self.membership.len() {
                     // send an append entries request to each peer in the membership, except itself
                     if i as i32 != self.pid {
@@ -112,11 +114,11 @@ impl Peer {
                             Some(req) => {
                                 let (_, res) = self.handle_append_entries_request(req.clone());
                                 if res {
-                                    let msg = self.create_response_append_msg(self.pid, res, self.log.len());
+                                    let msg = self.create_response_append_msg(self.pid, res, (self.log.len() as i32)-1);
                                     rmessage::send_msg(&req.sender, msg);
                                 }
                                 else {
-                                    let msg = self.create_response_append_msg(self.pid, res, 0);
+                                    let msg = self.create_response_append_msg(self.pid, res, -1);
                                     rmessage::send_msg(&req.sender, msg);
                                 }
                             },
@@ -162,6 +164,7 @@ impl Peer {
 
     // When the server gets an election timeout it assumes there is no viable leader, so it begins an election
     fn begin_election(&mut self) {
+        println!("Peer {} has started an election.", self.pid);
         self.current_term += 1;
         self.role = Role::CANDIDATE;
         self.voted_for = Some(self.pid);
@@ -169,14 +172,16 @@ impl Peer {
         self.votes_rcvd = vec!();
         self.update_election_timeout();
         
-        let msg = self.create_request_vote_msg();
-        rmessage::broadcast(&self.membership, msg);
+        for i in 0..self.membership.len() {
+            self.request_vote(i);
+        }
     }
 
     // Sends a request vote request to peer at <index> in membership
     fn request_vote(&self, index:usize) -> () {
         match self.role {
             Role::CANDIDATE => {
+                println!("Peer {} is sending a vote request to peer {}.", self.pid, index);
                 // Only send message if we haven't received a vote response from that peer
                 if !self.has_response(index as i32) {
                     rmessage::send_msg(&self.membership[index], self.create_request_vote_msg())
@@ -190,19 +195,21 @@ impl Peer {
     fn append_entries(&mut self, peer:usize) -> () {
         match self.role {
             Role::LEADER => {
+                println!("Peer {} is sending append_entries to {}.", self.pid, peer);
                 // Get the previous log index and term for the peer
                 let prev_log_index = self.next_index[peer] - 1;
                 let mut prev_log_term = 0;
-                if prev_log_index > 0 {
-                    prev_log_term = self.log[prev_log_index].term;
+                if prev_log_index >= 0 && self.log.len() as i32 > prev_log_index {
+                    prev_log_term = self.log[prev_log_index as usize].term;
                 }
                 // Get all new entries that need to be sent to the peer
                 let mut entries = vec!();
-                for i in self.next_index[peer]..self.log.len() {
+                for i in self.next_index[peer] as usize..self.log.len() {
                     entries.insert(entries.len(), self.log[i].clone());
                 }
                 // Create and send the append entries request message
                 let msg = self.create_append_entries_req_msg(entries, prev_log_index, prev_log_term);
+                println!("Peer {} is sending the msg {:?} to peer {}.", self.pid, msg.clone(), peer);
                 rmessage::send_msg(&self.membership[peer], msg);
             },
             _ => println!("Peer {} cannot send an append entries request since it is not a leader.", self.pid)
@@ -217,12 +224,14 @@ impl Peer {
                     // we did not receive a majority of votes, so we cannot become the leader
                     return;
                 }
+                println!("Peer {} received {} votes (majority).", self.pid, self.granted_votes_rcvd.len());
                 // we can become the leader
                 self.role = Role::LEADER;
                 // set next index to be the same as our next index
-                self.next_index = vec![self.log.len(); self.membership.len()];
+                self.next_index = vec![self.log.len() as i32; self.membership.len()];
                 // reset the match index to 0 (as far as we know, no logs in other peers match ours)
                 self.match_index = vec![0; self.membership.len()];
+                println!("Peer {} is now the leader.", self.pid);
             },
             _ => println!("Peer {} cannot become leader since it is not a candidate.", self.pid)
         }
@@ -232,17 +241,18 @@ impl Peer {
     fn update_commit_index(&mut self) -> () {
         match self.role {
             Role::LEADER => {
-                for index in self.commit_index..self.log.len() {
+                for index in (self.commit_index + 1) as usize..self.log.len() {
                     // count the number of replicas that contain the log entry at index <index>
                     let mut num_replicas = 0;
                     for peer_match in &self.match_index {
-                        if *peer_match >= index {
+                        if *peer_match >= index as i32 {
                             num_replicas += 1;
                         }
                     }
                     if num_replicas > (self.membership.len() / 2) {
                         // a majority of replicas contain the log entry
                         self.commit_index += 1;
+                        println!("Peer {} (leader) updated commit index to {}.", self.pid, self.commit_index);
                     }
                     else {
                         break; // ensure that there are no holes
@@ -256,6 +266,7 @@ impl Peer {
     // apply an operation
     fn apply_operation(&mut self, op:String) {
         println!("Peer {} applied operation: {}", self.pid, op);
+        println!("Peer {}'s log is currently: {:?}.", self.pid, self.log);
     }
 
     /* End of functions for main RAFT operations */
@@ -267,6 +278,7 @@ impl Peer {
     fn receive_client_request(&mut self, msg:rmessage::RequestOperation) -> () {
         match self.role {
             Role::LEADER => {
+                println!("Peer {} received client request.", self.pid);
                 // insert the new operation at the end of the log
                 self.log.insert(self.log.len(), Entry{operation:msg.operation, term:self.current_term});
             },
@@ -276,6 +288,7 @@ impl Peer {
 
     // Receive and process a vote request from a candidate peer
     fn handle_vote_request(&mut self, msg:rmessage::RequestVote) -> (i32, bool) {
+        println!("Peer {} received a vote request from {}.", self.pid, msg.candidate_pid);
         if msg.candidate_term < self.current_term {
             // do not vote for out of date candidates
             return (self.current_term, false);
@@ -300,12 +313,18 @@ impl Peer {
             // candidate has out of date logs
             return (self.current_term, false);
         }
-        if (msg.last_log_term == self_last_log_term) && (msg.last_log_index < (self.log.len() - 1)) {
-            // candidate has short logs
-            return (self.current_term, false);
+        if msg.last_log_term == self_last_log_term {
+            if self_last_log_term > 0 {
+                if msg.last_log_index < (self.log.len() - 1) as i32 {
+                    // candidate has short logs
+                    return (self.current_term, false);
+                }
+            }
+            
         }
         // if all previous checks pass, then vote for the candidate that requested the vote
         self.voted_for = Some(msg.candidate_pid);
+        println!("Peer {} has voted for peer {}.", self.pid, msg.candidate_pid);
         self.update_election_timeout();
         return (self.current_term, true);
     }
@@ -314,6 +333,7 @@ impl Peer {
     fn handle_vote_response(&mut self, msg:rmessage::ResponseVote) -> () {
         match self.role {
             Role::CANDIDATE => {
+                println!("Peer {} received vote response from {}.", self.pid, msg.follower_pid);
                 self.update_term(msg.follower_term);
                 // check if we have already received a response from that same peer
                 if !self.has_response(msg.follower_pid) {
@@ -328,32 +348,41 @@ impl Peer {
 
     // Receive and process an append entries request from a peer
     fn handle_append_entries_request(&mut self, msg:rmessage::RequestAppend) -> (i32, bool) {
+        println!("Peer {} received append_entries request from {}.", self.pid, msg.leader_pid);
         if msg.leader_term < self.current_term {
             // "old" message
             return (self.current_term, false);
         }
         self.update_term(msg.leader_term);
         self.update_election_timeout();
-        if msg.prev_log_index >= self.log.len() {
-            // we are missing entries
-            return (self.current_term, false);
-        }
-
-        // check if we have conflicting entries
-        if self.log[msg.prev_log_index].term != msg.leader_term {
-            // remove the conflicting entry and all that follow it
-            let i = msg.prev_log_index;
-            while i < self.log.len() {
-                self.log.remove(i);
+        if msg.prev_log_index >= 0 { 
+            if msg.prev_log_index >= self.log.len() as i32 {
+                // we are missing entries
+                return (self.current_term, false);
             }
-            return (self.current_term, false);
+    
+            // check if we have conflicting entries
+            if self.log[msg.prev_log_index as usize].term != msg.leader_term {
+                // remove the conflicting entry and all that follow it
+                let i = msg.prev_log_index as usize;
+                while i < self.log.len() {
+                    self.log.remove(i);
+                }
+                return (self.current_term, false);
+            }
         }
-
+        else {
+            // if it is equal to 0, means that we are receiving the first entry
+            // make sure that our log is empty
+            while self.log.len() > 0 {
+                self.log.remove(self.log.len() - 1);
+            }
+        }
         // if all checks pass, we can append the new entries to our log
         self.log.append(&mut msg.entries.clone());
         // update state to latest leader commit
         if msg.leader_commit_index > self.commit_index {
-            self.commit_index = cmp::min(msg.leader_commit_index, self.log.len() - 1);
+            self.commit_index = cmp::min(msg.leader_commit_index, self.log.len() as i32);
         }
         // apply newly commited operations, if there are any
         self.apply_new_commits();
@@ -365,6 +394,7 @@ impl Peer {
     fn handle_append_entries_response(&mut self, msg:rmessage::ResponseAppend) -> () {
         match self.role {
             Role::LEADER => {
+                println!("Peer {} received append_entries response.", self.pid);
                 if msg.follower_term > self.current_term {
                     // we should step down, since there is a follower with an higher term than ours
                     self.update_term(msg.follower_term);
@@ -372,13 +402,14 @@ impl Peer {
                 }
                 if !msg.success {
                     // decrease entry to be sent
-                    self.next_index[msg.follower_pid as usize] -= cmp::max(self.next_index[msg.follower_pid as usize]-1, 1);
+                    self.next_index[msg.follower_pid as usize] -= cmp::max(self.next_index[msg.follower_pid as usize], 0);
                 }
-                self.match_index[msg.follower_pid as usize] = msg.match_index;
-                self.next_index[msg.follower_pid as usize]  = msg.match_index + 1;
+                self.match_index[msg.follower_pid as usize] = msg.match_index as i32;
+                self.next_index[msg.follower_pid as usize]  = msg.match_index as i32 + 1;
 
                 // see if we can commit any new entries
                 self.update_commit_index();
+                self.apply_new_commits(); // only succeeds if there are new commits
             },
             _ => println!("Peer {} cannot process response to append entries since it is not a leader.", self.pid)
         }
@@ -406,7 +437,12 @@ impl Peer {
 
     // update the election timeout
     fn update_election_timeout(&mut self) {
-        self.election_timeout = SystemTime::now().checked_add(Duration::from_secs(3));
+        self.election_timeout = SystemTime::now().checked_add(Duration::from_secs(ELECTION_TIMEOUT + (self.pid as u64)));
+    }
+
+    // update the heartbeat timeout
+    fn update_heartbeat_timeout(&mut self) {
+        self.heartbeat_timeout = SystemTime::now().checked_add(Duration::from_secs(HEARTBEAT_TIMEOUT));
     }
 
     // check if there is a timeout (comparing current time to <t>)
@@ -424,7 +460,7 @@ impl Peer {
         // if there are non-applied commits, apply them
         if self.commit_index > self.last_applied {
             for i in self.last_applied+1..=self.commit_index {
-                self.apply_operation(self.log[i].operation.clone());
+                self.apply_operation(self.log[i as usize].operation.clone());
                 self.last_applied = i;
             }
         }
@@ -437,6 +473,10 @@ impl Peer {
 
     // TODO : re-checks fields (receive the necessary values as arguments)
     fn create_request_vote_msg(&self) -> rmessage::Message {
+        let mut last_log_term = 0;
+        if self.log.len() > 0 {
+            last_log_term = self.log[self.log.len()-1].term
+        }
         rmessage::Message {
             msg_type: rmessage::MessageType::REQVOTE,
             request_append: None,
@@ -446,15 +486,15 @@ impl Peer {
             request_vote: Some(rmessage::RequestVote {
                 candidate_pid: self.pid,
                 candidate_term: self.current_term,
-                last_log_index: self.log.len(),
-                last_log_term: self.log[self.log.len()-1].term,
+                last_log_index: self.log.len() as i32,
+                last_log_term: last_log_term,
                 sender: self.tx.clone()
             })
         }
     }
 
     // TODO : re-check fields (receive the necessary values as arguments)
-    fn create_append_entries_req_msg(&self, new_entries:Vec<Entry>, pli:usize, plt:i32) -> rmessage::Message {
+    fn create_append_entries_req_msg(&self, new_entries:Vec<Entry>, pli:i32, plt:i32) -> rmessage::Message {
         rmessage::Message {
             msg_type: rmessage::MessageType::REQAPPEND,
             request_append: Some(rmessage::RequestAppend {
@@ -491,7 +531,7 @@ impl Peer {
     }
 
     // TODO : re-check fields (receive the necessary values as arguments)
-    fn create_response_append_msg(&self, l_pid:i32, res:bool, m_index:usize) -> rmessage::Message {
+    fn create_response_append_msg(&self, l_pid:i32, res:bool, m_index:i32) -> rmessage::Message {
         rmessage::Message {
             msg_type: rmessage::MessageType::RESAPPEND,
             request_append: None,
@@ -515,8 +555,7 @@ impl Peer {
             msg_type: rmessage::MessageType::REQOP,
             request_append: None,
             request_operation: Some(rmessage::RequestOperation {
-                operation:op,
-                sender:self.tx.clone()
+                operation:op
             }),
             response_vote: None,
             response_append: None,
