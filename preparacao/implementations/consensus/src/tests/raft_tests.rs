@@ -46,20 +46,20 @@ pub fn test_nprocesses_multiple_proposals() {
 
     let agents = create_peers(channels, &membership);
 
-    // choose a random node to be the proposer, and send a BEGIN message to that node
-    let mut rng = rand::thread_rng();
-    let roll = rng.gen_range(0, NUM_PROCESSES);
     thread::sleep(time::Duration::from_secs(5));
-    membership[0].send(Message{
-        msg_type: MessageType::REQOP,
-        request_vote:      None,
-        response_vote:     None,
-        request_append:    None,
-        response_append:   None,
-        request_operation: Some(RequestOperation {
-            operation: String::from("SET X = 6")
-        })
-    }).unwrap();
+    for i in 0..10 {
+        membership[0].send(Message{
+            msg_type: MessageType::REQOP,
+            request_vote:      None,
+            response_vote:     None,
+            request_append:    None,
+            response_append:   None,
+            request_operation: Some(RequestOperation {
+                operation: String::from(format!("SET X = {}",i))
+            })
+        }).unwrap();
+        thread::sleep(time::Duration::from_secs(1));
+    }
 
     for ag in agents {
         let _ = ag.join();
