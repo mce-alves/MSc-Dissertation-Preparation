@@ -30,6 +30,7 @@ pub struct Peer {
     voted_for : Option<i32>,     // pid of the candidate that received vote in current term (or none)
     votes_rcvd: Vec<i32>,        // pid of the peers that responded to this candidate's vote request
     granted_votes_rcvd: Vec<i32>,// pid of the peers that voted for this candidate's vote request
+    current_leader: Option<i32>, // pid of who this peer THINKS is the current leader (might not be)
     log : Vec<Entry>,            // each entry is an operation for the state machine, and term when entry was received by leader
     role: Role,                  // this server's role
     commit_index : i32,          // index of highest log entry known to be committed (initialized at -1)
@@ -53,6 +54,7 @@ impl Peer {
             voted_for: None,
             votes_rcvd: vec!(),
             granted_votes_rcvd: vec!(),
+            current_leader: None,
             log: vec!(),
             commit_index: -1,
             last_applied: -1,
@@ -227,6 +229,7 @@ impl Peer {
                 println!("Peer {} received {} votes (majority).", self.pid, self.granted_votes_rcvd.len());
                 // we can become the leader
                 self.role = Role::LEADER;
+                self.current_leader = Some(self.pid);
                 // set next index to be the same as our next index
                 self.next_index = vec![self.log.len() as i32; self.membership.len()];
                 // reset the match index to 0 (as far as we know, no logs in other peers match ours)
@@ -282,7 +285,15 @@ impl Peer {
                 // insert the new operation at the end of the log
                 self.log.insert(self.log.len(), Entry{operation:msg.operation, term:self.current_term});
             },
-            _ => println!("Peer {} cannot handle a client request since it is not a leader.", self.pid) // TODO : redirect to leader?
+            _ => {
+                // Try to redirect to leader
+                match self.current_leader {
+                    Some(id) => {
+                        rmessage::send_msg(&self.membership[id as usize], self.create_reqop_msg_wrapper(msg));
+                    },
+                    None => println!("Peer {} cannot handle client request because it is not the leader, and does not know who the leader might be.", self.pid)
+                }
+            }
         }
     }
 
@@ -326,6 +337,8 @@ impl Peer {
         self.voted_for = Some(msg.candidate_pid);
         println!("Peer {} has voted for peer {}.", self.pid, msg.candidate_pid);
         self.update_election_timeout();
+        // as far as we know, the candidate will become the leader
+        self.current_leader = Some(msg.candidate_pid);
         return (self.current_term, true);
     }
 
@@ -355,6 +368,8 @@ impl Peer {
         }
         self.update_term(msg.leader_term);
         self.update_election_timeout();
+        // as far as we know, we received a request from a valid leader
+        self.current_leader = Some(msg.leader_pid);
         if msg.prev_log_index >= 0 { 
             if msg.prev_log_index >= self.log.len() as i32 {
                 // we are missing entries
@@ -471,7 +486,6 @@ impl Peer {
 
     /* Functions for creating messages */
 
-    // TODO : re-checks fields (receive the necessary values as arguments)
     fn create_request_vote_msg(&self) -> rmessage::Message {
         let mut last_log_term = 0;
         if self.log.len() > 0 {
@@ -493,7 +507,6 @@ impl Peer {
         }
     }
 
-    // TODO : re-check fields (receive the necessary values as arguments)
     fn create_append_entries_req_msg(&self, new_entries:Vec<Entry>, pli:i32, plt:i32) -> rmessage::Message {
         rmessage::Message {
             msg_type: rmessage::MessageType::REQAPPEND,
@@ -513,7 +526,6 @@ impl Peer {
         }
     }
 
-    // TODO : re-check fields (receive the necessary values as arguments)
     fn create_response_vote_msg(&self, vote:bool) -> rmessage::Message {
         rmessage::Message {
             msg_type: rmessage::MessageType::RESVOTE,
@@ -530,7 +542,6 @@ impl Peer {
         }
     }
 
-    // TODO : re-check fields (receive the necessary values as arguments)
     fn create_response_append_msg(&self, l_pid:i32, res:bool, m_index:i32) -> rmessage::Message {
         rmessage::Message {
             msg_type: rmessage::MessageType::RESAPPEND,
@@ -549,14 +560,11 @@ impl Peer {
         }
     }
 
-    // TODO : re-check fields (receive the necessary values as arguments)
-    fn create_request_operation_msg(&self, op:String) -> rmessage::Message {
+    fn create_reqop_msg_wrapper(&self, reqop:rmessage::RequestOperation) -> rmessage::Message {
         rmessage::Message {
             msg_type: rmessage::MessageType::REQOP,
             request_append: None,
-            request_operation: Some(rmessage::RequestOperation {
-                operation:op
-            }),
+            request_operation: Some(reqop),
             response_vote: None,
             response_append: None,
             request_vote: None

@@ -47,8 +47,10 @@ pub fn test_nprocesses_multiple_proposals() {
     let agents = create_peers(channels, &membership);
 
     thread::sleep(time::Duration::from_secs(5));
+    let mut rng = rand::thread_rng();
     for i in 0..10 {
-        membership[0].send(Message{
+        let roll = rng.gen_range(0, NUM_PROCESSES);
+        membership[roll as usize].send(Message{
             msg_type: MessageType::REQOP,
             request_vote:      None,
             response_vote:     None,
