@@ -371,7 +371,7 @@ impl Peer {
         // as far as we know, we received a request from a valid leader
         self.current_leader = Some(msg.leader_pid);
         if msg.prev_log_index >= 0 { 
-            if msg.prev_log_index >= self.log.len() as i32 {
+            if msg.prev_log_index > self.log.len() as i32 {
                 // we are missing entries
                 return (self.current_term, false);
             }
@@ -384,6 +384,13 @@ impl Peer {
                     self.log.remove(i);
                 }
                 return (self.current_term, false);
+            }
+            // check if we have entries that the leader doesn't know we have (entries after the prev_log_index)
+            // if we do, remove them (we can still append the new entries afterwards)
+            // Note : this can happen for example when a response to an append_entries is lost in the network, so
+            //        the leader will resend entries that we had already added to our log
+            while msg.prev_log_index < (self.log.len() as i32) - 1 {
+                self.log.remove((msg.prev_log_index + 1) as usize); // remove every entry after the prev_log_index
             }
         }
         else {
