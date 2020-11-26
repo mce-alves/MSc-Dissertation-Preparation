@@ -1,0 +1,8 @@
+[package]
+name = "multipaxos_vs_raft"
+version = "0.1.0"
+authors = ["Miguel Alves <mce.alves@campus.fct.unl.pt>"]
+edition = "2018"
+
+[dependencies]
+rand = "0.7"

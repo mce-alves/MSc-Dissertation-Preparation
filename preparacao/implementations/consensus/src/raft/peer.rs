@@ -83,6 +83,7 @@ impl Peer {
                     }
                 }
             }
+            // TODO : adicionar hipotese de o lider falhar (deixar de responder)
             // role independant operations
             self.handle_messages();
         }
