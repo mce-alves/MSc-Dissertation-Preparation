@@ -352,7 +352,11 @@ impl Peer {
                 // check if we have already received a response from that same peer
                 if !self.has_response(msg.follower_pid) {
                     self.votes_rcvd.insert(self.votes_rcvd.len(), msg.follower_pid);
-                    self.granted_votes_rcvd.insert(self.granted_votes_rcvd.len(), msg.follower_pid);
+                    
+                    if msg.vote_granted {
+                        self.granted_votes_rcvd.insert(self.granted_votes_rcvd.len(), msg.follower_pid);
+                    }
+
                     self.become_leader(); // only succeeds if we have majority of granted votes
                 }
             },
@@ -425,7 +429,7 @@ impl Peer {
                 }
                 if !msg.success {
                     // decrease entry to be sent
-                    self.next_index[msg.follower_pid as usize] -= cmp::max(self.next_index[msg.follower_pid as usize], 0);
+                    self.next_index[msg.follower_pid as usize] = cmp::max(self.next_index[msg.follower_pid as usize] - 1, 0);
                 }
                 self.match_index[msg.follower_pid as usize] = msg.match_index as i32;
                 self.next_index[msg.follower_pid as usize]  = msg.match_index as i32 + 1;
