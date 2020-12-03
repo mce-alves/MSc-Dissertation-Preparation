@@ -7,6 +7,8 @@ use std::cmp;
 use crate::rmessage;
 use std::sync::mpsc;
 use std::time::{Duration, SystemTime};
+use std::{thread, time};
+use rand::Rng;
 
 static ELECTION_TIMEOUT:u64  = 3; // if no message is received during this amount of time, begin an election
 static HEARTBEAT_TIMEOUT:u64 = 1; // if leader hasn't sent a message in this amount of time, leader sends a heartbeat
@@ -69,12 +71,20 @@ impl Peer {
     }
 
     pub fn run(&mut self) {
+        let mut failed = 0;
+        let mut rng = rand::thread_rng();
         loop {
             // role dependant operations
             match self.role {
                 Role::LEADER => {
                     if self.timed_out(self.heartbeat_timeout) {
                         self.send_entries();
+                    }
+                    let r = rng.gen_range(1, 25);
+                    if r == 1 && failed < 2 {
+                        // random-ish chance of peer failing for a duration of 15 seconds
+                        thread::sleep(time::Duration::new(15, 0));
+                        failed += 1;
                     }
                 },
                 _ => {
@@ -83,7 +93,6 @@ impl Peer {
                     }
                 }
             }
-            // TODO : adicionar hipotese de o lider falhar (deixar de responder)
             // role independant operations
             self.handle_messages();
         }

@@ -7,8 +7,8 @@ use rand::Rng;
 use crate::pmessage::*;
 use crate::agent;
 
-static NUM_PROCESSES:i32   = 100;
-static MAJORITY_QUORUM:i32 = 51;
+static NUM_PROCESSES:i32   = 500;
+static MAJORITY_QUORUM:i32 = 251;
 
 // create channels that agents will use to communicate, and return them
 pub fn create_channels_membership() -> (Vec<(mpsc::Sender<Message>, mpsc::Receiver<Message>)>,Vec<mpsc::Sender<Message>>) {
@@ -76,7 +76,7 @@ pub fn test_nprocesses_concurrent_proposals() {
     let agents = create_agents(channels, &membership);
 
     // choose a random node to be the proposer, and send a BEGIN message to that node
-    for i in 0..10 {
+    for i in 0..100 {
         membership[i].send(Message{
             msg_type: MessageType::BEGIN,
             prepare: None,

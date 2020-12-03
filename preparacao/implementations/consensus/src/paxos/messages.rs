@@ -87,7 +87,7 @@ pub fn send_msg(destination:&mpsc::Sender<Message>, msg:Message) -> () {
     let mut rng = rand::thread_rng();
 
     let delay = rng.gen_range(1, 50);
-    thread::sleep(time::Duration::new(0, delay)); // add a delay to make it easier to test concurrent proposals
+    thread::sleep(time::Duration::from_millis(delay)); // add a delay to make it easier to test concurrent proposals
     
     let roll = rng.gen_range(1, 100);
     if roll > CHANCE_OF_FAILURE { // chance for the message to be "lost in the network"
