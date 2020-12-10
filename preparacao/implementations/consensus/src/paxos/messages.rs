@@ -5,7 +5,7 @@ use rand::Rng;
 use std::thread;
 use std::time;
 
-static CHANCE_OF_FAILURE:i32 = 5; // chance of a message not being sent
+static CHANCE_OF_FAILURE:i32 = 10; // chance of a message not being sent
 
 
 #[derive(Clone)]

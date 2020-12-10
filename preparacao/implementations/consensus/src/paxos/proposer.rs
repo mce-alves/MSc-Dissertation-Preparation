@@ -2,6 +2,7 @@
 
 use std::sync::mpsc;
 use crate::pmessage::*;
+use std::time::Instant;
 
 enum ProposerState {
     IDLE,
@@ -19,7 +20,8 @@ pub struct Proposer {
     tx: mpsc::Sender<Message>,             // this proposers TX
     rcvd_promises: Vec<Promise>,           // vec of PID of processes that sent a PROMISE
     rcvd_accepts: Vec<Accepted>,           // vec of PID of processes that sent an ACCEPT
-    membership: Vec<mpsc::Sender<Message>> // membership (known correct processes)
+    membership: Vec<mpsc::Sender<Message>>,// membership (known correct processes),
+    start_time: Instant                    // When this proposer started the protocol
 }
 
 
@@ -35,7 +37,8 @@ impl Proposer {
             tx: t_tx,
             rcvd_promises: vec!(),
             rcvd_accepts: vec!(),
-            membership: t_membership
+            membership: t_membership,
+            start_time: Instant::now()
         }
     }
 
@@ -150,6 +153,8 @@ impl Proposer {
                     
                     if self.rcvd_promises.len() as i32 >= self.quorum_amount {
                         // proposer has received majority quorum of promises, therefore it can propose a value
+                        let time_elapsed = self.start_time.elapsed();
+                        println!("Proposer {} achieved majority of PROMISES in {} ms.", self.pid, time_elapsed.as_millis());
                         self.snd_propose();
                     }
                 },
@@ -191,6 +196,8 @@ impl Proposer {
                     self.post_rcv_accept(accepted.clone());
                     if self.rcvd_accepts.len() as i32 >= self.quorum_amount {
                         // we have majority of ACCEPTS so we should have consensus
+                        let time_elapsed = self.start_time.elapsed();
+                        println!("Proposer {} achieved majority of ACCEPTEDS (consensus) in {} ms.", self.pid, time_elapsed.as_millis());
                         self.check_consensus(accepted.id, accepted.value);
                     }
                 },

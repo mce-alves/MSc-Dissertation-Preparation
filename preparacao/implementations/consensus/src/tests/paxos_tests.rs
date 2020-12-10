@@ -75,8 +75,7 @@ pub fn test_nprocesses_concurrent_proposals() {
     let (channels, membership) = create_channels_membership();
     let agents = create_agents(channels, &membership);
 
-    // choose a random node to be the proposer, and send a BEGIN message to that node
-    for i in 0..100 {
+    for i in 0..10 {
         membership[i].send(Message{
             msg_type: MessageType::BEGIN,
             prepare: None,

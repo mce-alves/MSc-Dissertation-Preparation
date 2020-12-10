@@ -104,8 +104,12 @@ impl Acceptor {
                         self.max_id = prepare.id;
                         self.snd_promise(prepare.sender, prepare.sender_pid); // also updates state to PROMISED
                     },
-                    AcceptorState::PROMISED => {
+                    _ => {
                         // in promised state, we only send promise if ID is the highest we have seen so far
+                        // in accepted state the behaviour is the same, but it means a proposal has already been accepted
+                        // send a promise (which will include the accepted_id and accepted_val if in accepted state)
+                        // so that the following proposals will use that same value in order to ensure P2b
+                        // Property 2b : if a proposal with value V is chosen, then every higher-numbered proposal issued by any proposer has value V
                         if prepare.id > self.max_id {
                             // can make promise
                             self.max_id = prepare.id;
@@ -115,12 +119,6 @@ impl Acceptor {
                             // reject the prepare message
                             self.snd_reject(prepare.id, prepare.sender);
                         }
-                    },
-                    AcceptorState::ACCEPTED => {
-                        // accepted state means a proposal has already been accepted
-                        // send a promise (which will include the accepted_id and accepted_val) so that the following proposals will use that same value in order to ensure P2b
-                        // Property 2b : if a proposal with value V is chosen, then every higher-numbered proposal issued by any proposer has value V
-                        self.snd_promise(prepare.sender, prepare.sender_pid);
                     }
                 }
             },
