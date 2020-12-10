@@ -8,7 +8,7 @@ use std::{thread, time};
 use crate::rmessage::*;
 use crate::raft;
 
-static NUM_PROCESSES:i32 = 5;
+static NUM_PROCESSES:i32 = 50;
 
 // create channels that agents will use to communicate, and return them
 pub fn create_channels_membership() -> (Vec<(mpsc::Sender<Message>, mpsc::Receiver<Message>)>,Vec<mpsc::Sender<Message>>) {
@@ -48,7 +48,7 @@ pub fn test_nprocesses_multiple_proposals() {
 
     thread::sleep(time::Duration::from_secs(5));
     let mut rng = rand::thread_rng();
-    for i in 0..10 {
+    for i in 0..100 {
         let roll = rng.gen_range(0, NUM_PROCESSES);
         membership[roll as usize].send(Message{
             msg_type: MessageType::REQOP,
