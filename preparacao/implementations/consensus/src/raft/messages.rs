@@ -66,8 +66,8 @@ pub struct RequestOperation {
 // Send a message to a process with a chance for the message to get lost
 pub fn send_msg(destination:&mpsc::Sender<Message>, msg:Message) -> () {
     let mut rng = rand::thread_rng();
-    let delay = rng.gen_range(1, 250) * 1000000; // 1 to 250 millissecond delay, converted to nanosseconds
-    thread::sleep(time::Duration::new(0, delay)); // add a delay (nanosecs) to make it easier to test concurrent proposals
+    let delay = rng.gen_range(1, 250); // 1 to 250 millissecond delay
+    thread::sleep(time::Duration::from_millis(delay)); // add a delay to make it easier to test concurrent proposals
     
     let roll = rng.gen_range(1, 100);
     if roll > CHANCE_OF_FAILURE { // chance for the message to be "lost in the network"
