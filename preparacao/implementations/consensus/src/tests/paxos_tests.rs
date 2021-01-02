@@ -9,6 +9,7 @@ use crate::agent;
 
 static NUM_PROCESSES:i32   = 500;
 static MAJORITY_QUORUM:i32 = 251;
+static NUM_PROPOSALS:usize = 10;
 
 // create channels that agents will use to communicate, and return them
 pub fn create_channels_membership() -> (Vec<(mpsc::Sender<Message>, mpsc::Receiver<Message>)>,Vec<mpsc::Sender<Message>>) {
@@ -75,7 +76,7 @@ pub fn test_nprocesses_concurrent_proposals() {
     let (channels, membership) = create_channels_membership();
     let agents = create_agents(channels, &membership);
 
-    for i in 0..10 {
+    for i in 0..NUM_PROPOSALS {
         membership[i].send(Message{
             msg_type: MessageType::BEGIN,
             prepare: None,

@@ -8,7 +8,7 @@ use std::{thread, time};
 use crate::rmessage::*;
 use crate::raft;
 
-static NUM_PROCESSES:i32 = 50;
+static NUM_PROCESSES:i32 = 10;
 
 // create channels that agents will use to communicate, and return them
 pub fn create_channels_membership() -> (Vec<(mpsc::Sender<Message>, mpsc::Receiver<Message>)>,Vec<mpsc::Sender<Message>>) {
@@ -40,26 +40,21 @@ pub fn create_peers(mut channels:Vec<(mpsc::Sender<Message>, mpsc::Receiver<Mess
     return agents;
 }
 
-// executes a test for NUM_PROCESSES with a single proposal
+// one proposal per second
 pub fn test_nprocesses_multiple_proposals() {
     let (channels, membership) = create_channels_membership();
 
     let agents = create_peers(channels, &membership);
 
-    thread::sleep(time::Duration::from_secs(5));
+    thread::sleep(time::Duration::from_secs(10));
     let mut rng = rand::thread_rng();
-    for i in 0..100 {
+    for i in 0..25 {
+
         let roll = rng.gen_range(0, NUM_PROCESSES);
-        membership[roll as usize].send(Message{
-            msg_type: MessageType::REQOP,
-            request_vote:      None,
-            response_vote:     None,
-            request_append:    None,
-            response_append:   None,
-            request_operation: Some(RequestOperation {
-                operation: String::from(format!("SET X = {}",i))
-            })
-        }).unwrap();
+        membership[roll as usize].send(Message::REQOP(RequestOperation {
+            operation: String::from(format!("SET X = {}",i))
+        })).unwrap();
+
         thread::sleep(time::Duration::from_secs(1));
     }
 

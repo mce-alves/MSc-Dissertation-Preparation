@@ -74,24 +74,23 @@ impl Peer {
     }
 
     pub fn run(&mut self) {
-        let mut rng = rand::thread_rng();
         loop {
             // role dependant operations
             match self.role {
                 Role::LEADER => {
                     if self.timed_out(self.heartbeat_timeout) {
                         self.send_entries();
-                    }
-                    let r = rng.gen_range(1, 50);
-                    if r == 1 {
-                        // 1 in 50 chance of peer failing for 15 seconds
-                        thread::sleep(time::Duration::new(5, 0));
-                        // do not receive any message from when the peer failed
-                        loop {
-                            let msg = self.rx.recv_timeout(Duration::from_millis(10));
-                            match msg {
-                                Ok(_) => {},
-                                Err(_) => break
+                        let r = rand::thread_rng().gen_range(1, 10);
+                        if r == 1 {
+                            // 1 in 10 chance of peer failing for 5 seconds
+                            thread::sleep(time::Duration::new(5, 0));
+                            // do not receive any message from when the peer failed
+                            loop {
+                                let msg = self.rx.recv_timeout(Duration::from_millis(10));
+                                match msg {
+                                    Ok(_) => {},
+                                    Err(_) => break
+                                }
                             }
                         }
                     }
@@ -144,49 +143,30 @@ impl Peer {
         let msg = self.rx.recv_timeout(Duration::from_millis(100));
         match msg {
             Ok(m) => {
-                match m.msg_type {
-                    rmessage::MessageType::REQAPPEND => {
-                        match m.request_append {
-                            Some(req) => {
-                                let (_, res) = self.handle_append_entries_request(req.clone());
-                                if res {
-                                    let msg = self.create_response_append_msg(self.pid, res, (self.log.len() as i32)-1);
-                                    rmessage::send_msg(&req.sender, msg);
-                                }
-                                else {
-                                    let msg = self.create_response_append_msg(self.pid, res, -1);
-                                    rmessage::send_msg(&req.sender, msg);
-                                }
-                            },
-                            None => println!("Peer {} received invalid append entries request.", self.pid)
+                match m {
+                    rmessage::Message::REQAPPEND(req) => {
+                        let (_, res) = self.handle_append_entries_request(req.clone());
+                        if res {
+                            let msg = self.create_response_append_msg(self.pid, res, (self.log.len() as i32)-1);
+                            rmessage::send_msg(&req.sender, msg);
+                        }
+                        else {
+                            let msg = self.create_response_append_msg(self.pid, res, -1);
+                            rmessage::send_msg(&req.sender, msg);
                         }
                     },
-                    rmessage::MessageType::RESAPPEND => {
-                        match m.response_append {
-                            Some(req) => self.handle_append_entries_response(req),
-                            None => println!("Peer {} received invalid append entries response.", self.pid)
-                        }
+                    rmessage::Message::RESAPPEND(res) => {
+                        self.handle_append_entries_response(res);
                     },
-                    rmessage::MessageType::REQVOTE => {
-                        match m.request_vote {
-                            Some(req) => {
-                                let (_, vote) = self.handle_vote_request(req.clone());
-                                rmessage::send_msg(&req.sender, self.create_response_vote_msg(vote))
-                            },
-                            None => println!("Peer {} received invalid vote request.", self.pid)
-                        }
+                    rmessage::Message::REQVOTE(req) => {
+                        let (_, vote) = self.handle_vote_request(req.clone());
+                        rmessage::send_msg(&req.sender, self.create_response_vote_msg(vote));
                     },
-                    rmessage::MessageType::RESVOTE => {
-                        match m.response_vote {
-                            Some(req) => self.handle_vote_response(req),
-                            None => println!("Peer {} received invalid vote reponse.", self.pid)
-                        }
+                    rmessage::Message::RESVOTE(res) => {
+                        self.handle_vote_response(res);
                     },
-                    rmessage::MessageType::REQOP => {
-                        match m.request_operation {
-                            Some(req) => self.receive_client_request(req),
-                            None => println!("Peer {} received invalid client request.", self.pid)
-                        }
+                    rmessage::Message::REQOP(req) => {
+                        self.receive_client_request(req);
                     }
                 }
             },
@@ -551,6 +531,7 @@ impl Peer {
             self.next_index[msg.follower_pid as usize]  = msg.match_index as i32 + 1;
         }
         self.match_index[msg.follower_pid as usize] = msg.match_index as i32;
+        // self.next_index[msg.follower_pid as usize]  = msg.match_index as i32 + 1;   do this??
     }
 
     // Receive and process a response to an append entries from a peer
@@ -626,84 +607,49 @@ impl Peer {
         if self.log.len() > 0 {
             last_log_term = self.log[self.log.len()-1].term
         }
-        rmessage::Message {
-            msg_type: rmessage::MessageType::REQVOTE,
-            request_append: None,
-            request_operation: None,
-            response_vote: None,
-            response_append: None,
-            request_vote: Some(rmessage::RequestVote {
-                candidate_pid: self.pid,
-                candidate_term: self.current_term,
-                last_log_index: self.log.len() as i32,
-                last_log_term: last_log_term,
-                sender: self.tx.clone()
-            })
-        }
+        return rmessage::Message::REQVOTE(rmessage::RequestVote {
+            candidate_pid: self.pid,
+            candidate_term: self.current_term,
+            last_log_index: self.log.len() as i32,
+            last_log_term: last_log_term,
+            sender: self.tx.clone()
+        });
     }
 
     fn create_append_entries_req_msg(&self, new_entries:Vec<Entry>, pli:i32, plt:i32) -> rmessage::Message {
-        rmessage::Message {
-            msg_type: rmessage::MessageType::REQAPPEND,
-            request_append: Some(rmessage::RequestAppend {
-                leader_term:self.current_term,
-                leader_pid:self.pid,
-                prev_log_index:pli,
-                prev_log_term:plt,
-                entries:new_entries,
-                leader_commit_index:self.commit_index,
-                sender:self.tx.clone()
-            }),
-            request_operation: None,
-            response_vote: None,
-            response_append: None,
-            request_vote: None
-        }
+        return rmessage::Message::REQAPPEND(rmessage::RequestAppend {
+            leader_term:self.current_term,
+            leader_pid:self.pid,
+            prev_log_index:pli,
+            prev_log_term:plt,
+            entries:new_entries,
+            leader_commit_index:self.commit_index,
+            sender:self.tx.clone()
+        });
     }
 
     fn create_response_vote_msg(&self, vote:bool) -> rmessage::Message {
-        rmessage::Message {
-            msg_type: rmessage::MessageType::RESVOTE,
-            request_append: None,
-            request_operation: None,
-            response_vote: Some(rmessage::ResponseVote {
-                follower_term:self.current_term,
-                follower_pid:self.pid,
-                vote_granted:vote,
-                sender:self.tx.clone()
-            }),
-            response_append: None,
-            request_vote: None
-        }
+        return rmessage::Message::RESVOTE(rmessage::ResponseVote {
+            follower_term:self.current_term,
+            follower_pid:self.pid,
+            vote_granted:vote,
+            sender:self.tx.clone()
+        });
     }
 
     fn create_response_append_msg(&self, l_pid:i32, res:bool, m_index:i32) -> rmessage::Message {
-        rmessage::Message {
-            msg_type: rmessage::MessageType::RESAPPEND,
-            request_append: None,
-            request_operation: None,
-            response_vote: None,
-            response_append: Some(rmessage::ResponseAppend {
-                leader_pid:l_pid,
-                follower_term:self.current_term,
-                follower_pid:self.pid,
-                success:res,
-                match_index:m_index,
-                sender:self.tx.clone()
-            }),
-            request_vote: None
-        }
+        return rmessage::Message ::RESAPPEND(rmessage::ResponseAppend {
+            leader_pid:l_pid,
+            follower_term:self.current_term,
+            follower_pid:self.pid,
+            success:res,
+            match_index:m_index,
+            sender:self.tx.clone()
+        });
     }
 
     fn create_reqop_msg_wrapper(&self, reqop:rmessage::RequestOperation) -> rmessage::Message {
-        rmessage::Message {
-            msg_type: rmessage::MessageType::REQOP,
-            request_append: None,
-            request_operation: Some(reqop),
-            response_vote: None,
-            response_append: None,
-            request_vote: None
-        }
+        return rmessage::Message::REQOP(reqop);
     }
 
     /* End of functions for creating messages */
