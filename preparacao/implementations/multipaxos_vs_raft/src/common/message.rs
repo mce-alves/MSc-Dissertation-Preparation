@@ -11,24 +11,14 @@ static CHANCE_OF_FAILURE:i32 = 5; // chance of a message not being sent
 
 
 #[derive(Clone, Debug)]
-pub enum MessageType {
-    REQVOTE,   // request to execute request_vote operation
-    RESVOTE,   // result of executing request_vote operation
-    REQAPPEND, // request to execute append_entries operation
-    RESAPPEND, // result of executing append_entries operation
-    REQOP      // request of to execute an operation by a client
-}
-
-#[derive(Clone, Debug)]
-pub struct Message {
-    pub msg_type: MessageType,                            // Type of the message content. If type is req_vote, then request_vote should be SOME and the others None, etc.
-    pub raft_request_vote:  Option<RRequestVote>,         // RequestVote  message struct or none
-    pub raft_response_vote:  Option<RResponseVote>,       // RequestVote  message struct or none
-    pub paxos_request_vote:  Option<MPRequestVote>,       // RequestVote  message struct or none
-    pub paxos_response_vote:  Option<MPResponseVote>,// RequestVote  message struct or none
-    pub request_append:  Option<RequestAppend>,           // RequestVote  message struct or none
-    pub response_append:  Option<ResponseAppend>,         // RequestVote  message struct or none
-    pub request_operation:  Option<RequestOperation>      // RequestVote  message struct or none
+pub enum Message {
+    RREQVOTE(RRequestVote),    // raft request to execute request_vote operation
+    RRESVOTE(RResponseVote),   // raft result of executing request_vote operation
+    MPREQVOTE(MPRequestVote),   // paxos request to execute request_vote operation
+    MPRESVOTE(MPResponseVote),  // paxos result of executing request_vote operation
+    REQAPPEND(RequestAppend),  // request to execute append_entries operation
+    RESAPPEND(ResponseAppend), // result of executing append_entries operation
+    REQOP(RequestOperation)    // request of to execute an operation by a client
 }
 
 // multipaxos format
@@ -101,8 +91,8 @@ pub struct RequestOperation {
 pub fn send_msg(destination:&mpsc::Sender<Message>, msg:Message) -> () {
     let mut rng = rand::thread_rng();
 
-    let delay = rng.gen_range(1, 50);
-    thread::sleep(time::Duration::new(0, delay)); // add a delay to make it easier to test concurrent proposals
+    let delay = rng.gen_range(1, 250); // 1 to 250 millissecond delay
+    thread::sleep(time::Duration::from_millis(delay)); // add a delay to make it easier to test concurrent proposals
     
     let roll = rng.gen_range(1, 100);
     if roll > CHANCE_OF_FAILURE { // chance for the message to be "lost in the network"

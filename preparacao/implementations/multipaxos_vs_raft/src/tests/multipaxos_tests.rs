@@ -46,22 +46,13 @@ pub fn test_nprocesses_multiple_proposals() {
 
     let agents = create_peers(channels, &membership);
 
-    thread::sleep(time::Duration::from_secs(5));
+    thread::sleep(time::Duration::from_secs(10));
     let mut rng = rand::thread_rng();
     for i in 0..10 {
         let roll = rng.gen_range(0, NUM_PROCESSES);
-        membership[roll as usize].send(Message{
-            msg_type: MessageType::REQOP,
-            raft_request_vote:      None,
-            raft_response_vote:     None,
-            paxos_request_vote:      None,
-            paxos_response_vote:     None,
-            request_append:    None,
-            response_append:   None,
-            request_operation: Some(RequestOperation {
-                operation: String::from(format!("SET X = {}",i))
-            })
-        }).unwrap();
+        membership[roll as usize].send(Message::REQOP(RequestOperation {
+            operation: String::from(format!("SET X = {}",i))
+        })).unwrap();
         thread::sleep(time::Duration::from_secs(1));
     }
 

@@ -265,40 +265,22 @@ impl Peer {
     /* Functions for creating messages */
 
     fn create_request_vote_msg(&self) -> message::Message {
-        message::Message {
-            msg_type: message::MessageType::REQVOTE,
-            request_append: None,
-            request_operation: None,
-            raft_response_vote: None,
-            raft_request_vote: None,
-            paxos_response_vote: None,
-            response_append: None,
-            paxos_request_vote: Some(message::MPRequestVote {
-                candidate_pid: self.common.pid,
-                candidate_term: self.common.current_term,
-                leader_commit: self.common.commit_index,
-                sender: self.common.tx.clone()
-            })
-        }
+        return message::Message::MPREQVOTE(message::MPRequestVote {
+            candidate_pid: self.common.pid,
+            candidate_term: self.common.current_term,
+            leader_commit: self.common.commit_index,
+            sender: self.common.tx.clone()
+        });
     }
 
     fn create_response_vote_msg(&self, vote:bool, t_entries:Vec<Entry>) -> message::Message {
-        message::Message {
-            msg_type: message::MessageType::RESVOTE,
-            request_append: None,
-            request_operation: None,
-            paxos_response_vote: Some(message::MPResponseVote {
-                follower_term:self.common.current_term,
-                follower_pid:self.common.pid,
-                vote_granted:vote,
-                entries:t_entries,
-                sender:self.common.tx.clone()
-            }),
-            response_append: None,
-            paxos_request_vote: None,
-            raft_response_vote: None,
-            raft_request_vote: None
-        }
+        return message::Message::MPRESVOTE(message::MPResponseVote {
+            follower_term:self.common.current_term,
+            follower_pid:self.common.pid,
+            vote_granted:vote,
+            entries:t_entries,
+            sender:self.common.tx.clone()
+        });
     }
 
 
@@ -310,53 +292,35 @@ impl Peer {
         let msg = self.common.rx.recv_timeout(Duration::from_millis(100));
         match msg {
             Ok(m) => {
-                match m.msg_type {
-                    message::MessageType::REQAPPEND => {
-                        match m.request_append {
-                            Some(req) => {
-                                let (_, res) = self.handle_append_entries_request(req.clone());
-                                if res {
-                                    let msg = self.common.create_response_append_msg(self.common.pid, res, (self.common.log.len() as i32)-1);
-                                    message::send_msg(&req.sender, msg);
-                                }
-                                else {
-                                    let msg = self.common.create_response_append_msg(self.common.pid, res, -1);
-                                    message::send_msg(&req.sender, msg);
-                                }
-                            },
-                            None => println!("Peer {} received invalid append entries request.", self.common.pid)
+                match m {
+                    message::Message::REQAPPEND(req) => {
+                        let (_, res) = self.handle_append_entries_request(req.clone());
+                        if res {
+                            let msg = self.common.create_response_append_msg(self.common.pid, res, (self.common.log.len() as i32)-1);
+                            message::send_msg(&req.sender, msg);
+                        }
+                        else {
+                            let msg = self.common.create_response_append_msg(self.common.pid, res, -1);
+                            message::send_msg(&req.sender, msg);
                         }
                     },
-                    message::MessageType::RESAPPEND => {
-                        match m.response_append {
-                            Some(req) => self.handle_append_entries_response(req),
-                            None => println!("Peer {} received invalid append entries response.", self.common.pid)
-                        }
+                    message::Message::RESAPPEND(res) => {
+                        self.handle_append_entries_response(res);
                     },
-                    message::MessageType::REQVOTE => {
-                        match m.paxos_request_vote {
-                            Some(req) => {
-                                let (_, vote, entries) = self.handle_vote_request(req.clone());
-                                message::send_msg(&req.sender, self.create_response_vote_msg(vote, entries))
-                            },
-                            None => println!("Peer {} received invalid vote request.", self.common.pid)
-                        }
+                    message::Message::MPREQVOTE(req) => {
+                        let (_, vote, entries) = self.handle_vote_request(req.clone());
+                        message::send_msg(&req.sender, self.create_response_vote_msg(vote, entries));
                     },
-                    message::MessageType::RESVOTE => {
-                        match m.paxos_response_vote {
-                            Some(req) => self.handle_vote_response(req),
-                            None => println!("Peer {} received invalid vote reponse.", self.common.pid)
-                        }
+                    message::Message::MPRESVOTE(res) => {
+                        self.handle_vote_response(res);
                     },
-                    message::MessageType::REQOP => {
-                        match m.request_operation {
-                            Some(req) => self.common.receive_client_request(req),
-                            None => println!("Peer {} received invalid client request.", self.common.pid)
-                        }
-                    }
+                    message::Message::REQOP(req) => {
+                        self.common.receive_client_request(req);
+                    },
+                    _ => println!("Received invalid message")
                 }
             },
-            Err(_) => () // no message was received before the timeout, which is fine!
+            Err(_) => () // no message was received before the set timeout, which is fine!
         }
     }
 

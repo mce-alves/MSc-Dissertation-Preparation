@@ -266,57 +266,30 @@ impl CommonState {
     /* Common functions for creating messages */
 
     pub fn create_reqop_msg_wrapper(&self, reqop:message::RequestOperation) -> message::Message {
-        message::Message {
-            msg_type: message::MessageType::REQOP,
-            request_append: None,
-            request_operation: Some(reqop),
-            paxos_response_vote: None,
-            paxos_request_vote: None,
-            raft_response_vote: None,
-            response_append: None,
-            raft_request_vote: None
-        }
+        return message::Message::REQOP(reqop);
     }
 
     pub fn create_response_append_msg(&self, l_pid:i32, res:bool, m_index:i32) -> message::Message {
-        message::Message {
-            msg_type: message::MessageType::RESAPPEND,
-            request_append: None,
-            request_operation: None,
-            paxos_response_vote: None,
-            response_append: Some(message::ResponseAppend {
-                leader_pid:l_pid,
-                follower_term:self.current_term,
-                follower_pid:self.pid,
-                success:res,
-                match_index:m_index,
-                sender:self.tx.clone()
-            }),
-            paxos_request_vote: None,
-            raft_response_vote: None,
-            raft_request_vote: None,
-        }
+        return message::Message ::RESAPPEND(message::ResponseAppend {
+            leader_pid:l_pid,
+            follower_term:self.current_term,
+            follower_pid:self.pid,
+            success:res,
+            match_index:m_index,
+            sender:self.tx.clone()
+        });
     }
 
     pub fn create_append_entries_req_msg(&self, new_entries:Vec<Entry>, pli:i32, plt:i32) -> message::Message {
-        message::Message {
-            msg_type: message::MessageType::REQAPPEND,
-            request_append: Some(message::RequestAppend {
-                leader_term:self.current_term,
-                leader_pid:self.pid,
-                prev_log_index:pli,
-                prev_log_term:plt,
-                entries:new_entries,
-                leader_commit_index:self.commit_index,
-                sender:self.tx.clone()
-            }),
-            request_operation: None,
-            response_append: None,
-            raft_response_vote: None,
-            raft_request_vote: None,
-            paxos_response_vote: None,
-            paxos_request_vote: None
-        }
+        return message::Message::REQAPPEND(message::RequestAppend {
+            leader_term:self.current_term,
+            leader_pid:self.pid,
+            prev_log_index:pli,
+            prev_log_term:plt,
+            entries:new_entries,
+            leader_commit_index:self.commit_index,
+            sender:self.tx.clone()
+        });
     }
 
 
