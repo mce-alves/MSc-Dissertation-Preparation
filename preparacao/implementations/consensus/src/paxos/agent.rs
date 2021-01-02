@@ -35,14 +35,14 @@ impl Agent {
 
     pub fn run(&mut self) {
         for msg in self.rx.iter() {
-            match msg.msg_type {
-                MessageType::PREPARE => self.acceptor.rcv_prepare(msg),
-                MessageType::PROMISE => self.proposer.rcv_promise(msg),
-                MessageType::PROPOSE => self.acceptor.rcv_propose(msg),
-                MessageType::ACCEPTED => self.proposer.rcv_accept(msg),
-                MessageType::CONSENSUS => self.learner.rcv_accept(msg),
-                MessageType::REJECTED => self.proposer.rcv_reject(msg),
-                MessageType::BEGIN => {
+            match msg {
+                Message::PREPARE(m) => self.acceptor.rcv_prepare(m),
+                Message::PROMISE(m) => self.proposer.rcv_promise(m),
+                Message::PROPOSE(m) => self.acceptor.rcv_propose(m),
+                Message::ACCEPTED(m) => self.proposer.rcv_accept(m),
+                Message::CONSENSUS(m) => self.learner.rcv_accept(m),
+                Message::REJECTED(m) => self.proposer.rcv_reject(m),
+                Message::BEGIN => {
                     self.proposer.snd_prepare();
                     self.learner.set_distinguished_status(true);
                 }

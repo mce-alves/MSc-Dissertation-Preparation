@@ -24,27 +24,22 @@ impl Learner {
     }
 
     // process an incoming ACCEPTED message
-    pub fn rcv_accept(&mut self, msg:Message) -> () {
-        match (msg.clone().msg_type, msg.clone().consensus) {
-            (MessageType::CONSENSUS, Some(acc_msg)) => {
-                if acc_msg.id > self.last_accepted_id {
-                    self.last_accepted_id = acc_msg.id;
-                    self.current_value = acc_msg.value;
-                    println!("Learner {} received ACCEPTED for with id={};val={}.", self.pid, acc_msg.id, acc_msg.value);
-                    if self.is_distinguished {
-                        self.propagate_accepted_msg(msg);
-                    }
-                }
-            },
-            _ => println!("Learner {} received invalid ACCEPTED message.", self.pid)
+    pub fn rcv_accept(&mut self, acc_msg:Consensus) -> () {
+        if acc_msg.id > self.last_accepted_id {
+            self.last_accepted_id = acc_msg.id;
+            self.current_value = acc_msg.value;
+            println!("Learner {} received ACCEPTED for with id={};val={}.", self.pid, acc_msg.id, acc_msg.value);
+            if self.is_distinguished {
+                self.propagate_accepted_msg(acc_msg);
+            }
         }
     }
 
     // propagate an ACCEPTED message to all the other learners in the membership
-    pub fn propagate_accepted_msg(&self, msg:Message) -> () {
+    pub fn propagate_accepted_msg(&self, msg:Consensus) -> () {
         if self.is_distinguished {
             println!("Learner {} (distinguished) is propagating ACCEPTED message to other learners.", self.pid);
-            broadcast(&self.membership, msg);
+            broadcast(&self.membership, Message::CONSENSUS(msg));
         }
         else {
             println!("Learner {} cannot propagate ACCEPTED message because it is not distinguished.", self.pid);

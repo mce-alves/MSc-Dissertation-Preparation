@@ -94,35 +94,30 @@ impl Acceptor {
     }
 
     // process a received PREPARE message
-    pub fn rcv_prepare(&mut self, msg:Message) -> () {
-        match (msg.msg_type, msg.prepare) {
-            (MessageType::PREPARE, Some(prepare)) => {
-                println!("Acceptor {} received prepare from Proposer {} with id={}.", self.pid, prepare.sender_pid, prepare.id);
-                match self.state {
-                    AcceptorState::IDLE => {
-                        // idle means no prepare has been received yet, so we can promise any received ID
-                        self.max_id = prepare.id;
-                        self.snd_promise(prepare.sender, prepare.sender_pid); // also updates state to PROMISED
-                    },
-                    _ => {
-                        // in promised state, we only send promise if ID is the highest we have seen so far
-                        // in accepted state the behaviour is the same, but it means a proposal has already been accepted
-                        // send a promise (which will include the accepted_id and accepted_val if in accepted state)
-                        // so that the following proposals will use that same value in order to ensure P2b
-                        // Property 2b : if a proposal with value V is chosen, then every higher-numbered proposal issued by any proposer has value V
-                        if prepare.id > self.max_id {
-                            // can make promise
-                            self.max_id = prepare.id;
-                            self.snd_promise(prepare.sender, prepare.sender_pid);
-                        }
-                        else {
-                            // reject the prepare message
-                            self.snd_reject(prepare.id, prepare.sender);
-                        }
-                    }
-                }
+    pub fn rcv_prepare(&mut self, prepare:Prepare) -> () {
+        println!("Acceptor {} received prepare from Proposer {} with id={}.", self.pid, prepare.sender_pid, prepare.id);
+        match self.state {
+            AcceptorState::IDLE => {
+                // idle means no prepare has been received yet, so we can promise any received ID
+                self.max_id = prepare.id;
+                self.snd_promise(prepare.sender, prepare.sender_pid); // also updates state to PROMISED
             },
-            _ => println!("Acceptor {} received invalid prepare message.", self.pid)
+            _ => {
+                // in promised state, we only send promise if ID is the highest we have seen so far
+                // in accepted state the behaviour is the same, but it means a proposal has already been accepted
+                // send a promise (which will include the accepted_id and accepted_val if in accepted state)
+                // so that the following proposals will use that same value in order to ensure P2b
+                // Property 2b : if a proposal with value V is chosen, then every higher-numbered proposal issued by any proposer has value V
+                if prepare.id > self.max_id {
+                    // can make promise
+                    self.max_id = prepare.id;
+                    self.snd_promise(prepare.sender, prepare.sender_pid);
+                }
+                else {
+                    // reject the prepare message
+                    self.snd_reject(prepare.id, prepare.sender);
+                }
+            }
         }
     }
 
@@ -141,22 +136,17 @@ impl Acceptor {
     }
 
     // process a received PROPOSE message
-    pub fn rcv_propose(&mut self, msg:Message) -> () {
+    pub fn rcv_propose(&mut self, proposal:Propose) -> () {
         if self.pre_rcv_propose() {
-            match (msg.msg_type, msg.propose) {
-                (MessageType::PROPOSE, Some(proposal)) => {
-                    println!("Acceptor {} received proposal from Proposer {} with id={}, val={}.", self.pid, proposal.sender_pid, proposal.id, proposal.value);
-                    // accept the proposal if it contains the highest ID for which we received a prepare
-                    // P1a : an acceptor can accept a proposal with id N if it has not responded to a prepare request having number greater than N
-                    if proposal.id >= self.max_id {
-                        self.accept_proposal(proposal);
-                    }
-                    else {
-                        // reject the proposal
-                        self.snd_reject(proposal.id, proposal.sender);
-                    }
-                },
-                _ => println!("Acceptor {} received invalid PROPOSE message.", self.pid)
+            println!("Acceptor {} received proposal from Proposer {} with id={}, val={}.", self.pid, proposal.sender_pid, proposal.id, proposal.value);
+            // accept the proposal if it contains the highest ID for which we received a prepare
+            // P1a : an acceptor can accept a proposal with id N if it has not responded to a prepare request having number greater than N
+            if proposal.id >= self.max_id {
+                self.accept_proposal(proposal);
+            }
+            else {
+                // reject the proposal
+                self.snd_reject(proposal.id, proposal.sender);
             }
         }
     }
@@ -187,56 +177,32 @@ impl Acceptor {
 
     // create promise message
     fn create_promise_msg(&self) -> Message {
-        Message {
-            msg_type: MessageType::PROMISE,
-            prepare: None,
-            promise: Some(Promise {
-                accepted_id: self.accepted_id,
-                accepted_value: self.accepted_val,
-                id: self.max_id,
-                sender: self.tx.clone(),
-                sender_pid: self.pid
-            }),
-            propose: None,
-            accepted: None,
-            rejected: None,
-            consensus: None
-        }
+        return Message::PROMISE(Promise {
+            accepted_id: self.accepted_id,
+            accepted_value: self.accepted_val,
+            id: self.max_id,
+            sender: self.tx.clone(),
+            sender_pid: self.pid
+        });
     }
 
     // create accept message
     fn create_accept_msg(&self, accepted_id:f32, accepted_val:i32) -> Message {
-        Message {
-            msg_type: MessageType::ACCEPTED,
-            prepare: None,
-            promise: None,
-            propose: None,
-            accepted: Some(Accepted {
-                id: accepted_id,
-                sender_pid: self.pid,
-                sender: self.tx.clone(),
-                value: accepted_val
-            }),
-            rejected: None,
-            consensus: None
-        }
+        return Message::ACCEPTED(Accepted {
+            id: accepted_id,
+            sender_pid: self.pid,
+            sender: self.tx.clone(),
+            value: accepted_val
+        });
     }
 
     // create reject message
     fn create_reject_msg(&self, rejected_id:f32) -> Message {
-        Message {
-            msg_type: MessageType::REJECTED,
-            prepare: None,
-            promise: None,
-            propose: None,
-            accepted: None,
-            consensus: None,
-            rejected: Some(Rejected {
-                id: rejected_id,
-                max_id: self.max_id,
-                sender_pid: self.pid
-            })
-        }
+        return Message::REJECTED(Rejected {
+            id: rejected_id,
+            max_id: self.max_id,
+            sender_pid: self.pid
+        });
     }
 
 }

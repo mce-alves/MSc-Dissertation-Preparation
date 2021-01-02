@@ -9,25 +9,14 @@ static CHANCE_OF_FAILURE:i32 = 10; // chance of a message not being sent
 
 
 #[derive(Clone)]
-pub enum MessageType {
-    BEGIN,
-    PREPARE,
-    PROMISE,
-    PROPOSE,
-    ACCEPTED,
-    REJECTED,
-    CONSENSUS
-}
-
-#[derive(Clone)]
-pub struct Message {
-    pub msg_type: MessageType,      // Type of the message content. If type is prepare, then prepare should be SOME and other None, etc.
-    pub prepare:  Option<Prepare>,  // Prepare  message struct or none
-    pub promise:  Option<Promise>,  // Promise  message struct or none
-    pub propose:  Option<Propose>,  // Propose  message struct or none
-    pub accepted: Option<Accepted>, // Accepted message struct or none
-    pub rejected: Option<Rejected>, // Rejected message struct or none
-    pub consensus: Option<Consensus>// Consensus message struct or none
+pub enum Message {
+    BEGIN,               // Client initiates the protocol
+    PREPARE(Prepare),    // Prepare message
+    PROMISE(Promise),    // Promise message
+    PROPOSE(Propose),    // Propose message
+    ACCEPTED(Accepted),  // Accepted message
+    REJECTED(Rejected),  // Rejected message
+    CONSENSUS(Consensus) // Consensus reached message
 }
 
 #[derive(Clone)]
@@ -86,7 +75,7 @@ pub fn broadcast(membership:&Vec<mpsc::Sender<Message>>, msg:Message) -> () {
 pub fn send_msg(destination:&mpsc::Sender<Message>, msg:Message) -> () {
     let mut rng = rand::thread_rng();
 
-    let delay = rng.gen_range(1, 50);
+    let delay = rng.gen_range(1, 250); // 1 to 250 millissecond delay
     thread::sleep(time::Duration::from_millis(delay)); // add a delay to make it easier to test concurrent proposals
     
     let roll = rng.gen_range(1, 100);

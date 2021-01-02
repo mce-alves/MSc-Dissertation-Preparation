@@ -122,15 +122,10 @@ impl Proposer {
 
 
     // pre condition for rcv_promise
-    fn pre_rcv_promise(&self, msg:&Message) -> bool {
+    fn pre_rcv_promise(&self, promise:&Promise) -> bool {
         match self.state {
             ProposerState::PREPARED => {
-                match(&msg.msg_type, &msg.promise) {
-                    (MessageType::PROMISE, Some(promise)) => {
-                        self.check_received_promises(promise.sender_pid) == false // valid pre-condition if we haven't received a promise from this peer
-                    },
-                    _ => false // invalid message format
-                }
+                self.check_received_promises(promise.sender_pid) == false // valid pre-condition if we haven't received a promise from this peer
             },
             _ => false // invalid state
         }
@@ -143,22 +138,17 @@ impl Proposer {
     }
 
     // process a received PROMISE message
-    pub fn rcv_promise(&mut self, msg:Message) -> () {
-        if self.pre_rcv_promise(&msg) {
-            match (msg.msg_type, msg.promise) {
-                (MessageType::PROMISE, Some(promise)) => {
-                    println!("Proposer {} received promise from Acceptor {} for id={}.", self.pid, promise.sender_pid, promise.id);
+    pub fn rcv_promise(&mut self, promise:Promise) -> () {
+        if self.pre_rcv_promise(&promise) {
+            println!("Proposer {} received promise from Acceptor {} for id={}.", self.pid, promise.sender_pid, promise.id);
 
-                    self.post_rcv_promise(promise);
-                    
-                    if self.rcvd_promises.len() as i32 >= self.quorum_amount {
-                        // proposer has received majority quorum of promises, therefore it can propose a value
-                        let time_elapsed = self.start_time.elapsed();
-                        println!("Proposer {} achieved majority of PROMISES in {} ms.", self.pid, time_elapsed.as_millis());
-                        self.snd_propose();
-                    }
-                },
-                _ => println!("Proposer {} received invalid PROMISE.", self.pid)
+            self.post_rcv_promise(promise);
+            
+            if self.rcvd_promises.len() as i32 >= self.quorum_amount {
+                // proposer has received majority quorum of promises, therefore it can propose a value
+                let time_elapsed = self.start_time.elapsed();
+                println!("Proposer {} achieved majority of PROMISES in {} ms.", self.pid, time_elapsed.as_millis());
+                self.snd_propose();
             }
         }
         else {
@@ -168,15 +158,10 @@ impl Proposer {
 
 
     // pre condition for rcv_accept
-    fn pre_rcv_accept(&self, msg:&Message) -> bool {
+    fn pre_rcv_accept(&self, accepted:&Accepted) -> bool {
         match self.state {
             ProposerState::PROPOSED => {
-                match(&msg.msg_type, &msg.accepted) {
-                    (MessageType::ACCEPTED, Some(accept)) => {
-                        self.check_received_accepts(accept.sender_pid) == false // valid pre-condition if we haven't received an accepted from this peer
-                    },
-                    _ => false // invalid message format
-                }
+                self.check_received_accepts(accepted.sender_pid) == false // valid pre-condition if we haven't received an accepted from this peer
             },
             _ => false // invalid state
         }
@@ -189,19 +174,14 @@ impl Proposer {
     }
 
     // process a received ACCEPTED message
-    pub fn rcv_accept(&mut self, msg:Message) -> () {
-        if self.pre_rcv_accept(&msg) {
-            match (msg.msg_type, msg.accepted) {
-                (MessageType::ACCEPTED, Some(accepted)) => {
-                    self.post_rcv_accept(accepted.clone());
-                    if self.rcvd_accepts.len() as i32 >= self.quorum_amount {
-                        // we have majority of ACCEPTS so we should have consensus
-                        let time_elapsed = self.start_time.elapsed();
-                        println!("Proposer {} achieved majority of ACCEPTEDS (consensus) in {} ms.", self.pid, time_elapsed.as_millis());
-                        self.check_consensus(accepted.id, accepted.value);
-                    }
-                },
-                _ => println!("Proposer {} received invalid ACCEPTED message.", self.pid)
+    pub fn rcv_accept(&mut self, accepted:Accepted) -> () {
+        if self.pre_rcv_accept(&accepted) {
+            self.post_rcv_accept(accepted.clone());
+            if self.rcvd_accepts.len() as i32 >= self.quorum_amount {
+                // we have majority of ACCEPTS so we should have consensus
+                let time_elapsed = self.start_time.elapsed();
+                println!("Proposer {} achieved majority of ACCEPTEDS (consensus) in {} ms.", self.pid, time_elapsed.as_millis());
+                self.check_consensus(accepted.id, accepted.value);
             }
         }
     }
@@ -232,16 +212,11 @@ impl Proposer {
     }
 
     // process a received REJECTED message (for a PREPARE)
-    pub fn rcv_reject(&self, msg:Message) -> () {
+    pub fn rcv_reject(&self, rejected:Rejected) -> () {
         match self.state { 
             ProposerState::PREPARED => {
-                match (msg.msg_type, msg.rejected) {
-                    (MessageType::REJECTED, Some(rejected)) => {
-                        println!("Proposer {} received rejected from Acceptor {} for id={}.", self.pid, rejected.sender_pid, rejected.id);
-                        // if we receive a rejected message, do nothing
-                    },
-                    _ => println!("Proposer {} received invalid REJECTED message.", self.pid)
-                }
+                println!("Proposer {} received rejected from Acceptor {} for id={}.", self.pid, rejected.sender_pid, rejected.id);
+                // if we receive a rejected message, do nothing
             },
             _ => println!("Proposer {} cannot receive REJECTED since it is not in PREPARED state.", self.pid)
         }
@@ -299,53 +274,29 @@ impl Proposer {
 
     // create a prepare message
     fn create_prepare_msg(&self) -> Message {
-        Message{
-            msg_type: MessageType::PREPARE,
-            prepare: Some(Prepare{
-                id: self.id,
-                sender_pid: self.pid,
-                sender: self.tx.clone(),
-            }),
-            promise: None,
-            propose: None,
-            accepted: None,
-            rejected: None,
-            consensus: None
-        }
+        return Message::PREPARE(Prepare{
+            id: self.id,
+            sender_pid: self.pid,
+            sender: self.tx.clone(),
+        });
     }
 
     // create a propose message with value <v>
     fn create_propose_msg(&self) -> Message {
-        Message{
-            msg_type: MessageType::PROPOSE,
-            prepare: None,
-            promise: None,
-            propose: Some(Propose{
-                id: self.id,
-                sender_pid: self.pid,
-                sender: self.tx.clone(),
-                value: self.propose_val
-            }),
-            accepted: None,
-            rejected: None,
-            consensus: None
-        }
+        return Message::PROPOSE(Propose{
+            id: self.id,
+            sender_pid: self.pid,
+            sender: self.tx.clone(),
+            value: self.propose_val
+        });
     }
 
     // create a consensus message with id <id> and value <v>
     fn create_consensus_msg(&self, t_id:f32, v:i32) -> Message {
-        Message{
-            msg_type: MessageType::CONSENSUS,
-            prepare: None,
-            promise: None,
-            propose: None,
-            accepted: None,
-            rejected: None,
-            consensus: Some(Consensus{
-                id: t_id,
-                value: v
-            })
-        }
+        return Message::CONSENSUS(Consensus{
+            id: t_id,
+            value: v
+        });
     }
 
 }
