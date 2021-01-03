@@ -68,6 +68,37 @@ impl CommonState {
         }
     }
 
+    // pre conditions for send_entries
+    fn pre_send_entries(&self) -> bool {
+        match self.role {
+            Role::LEADER => true,
+            _ => {
+                println!("Peer {} cannot send entries because it is not the leader", self.pid);
+                false
+            }
+        }
+    }
+
+    // post conditions for send_entries
+    fn post_append_entries(&mut self) {
+        self.update_heartbeat_timeout();
+    }
+
+    // Loops through the membership and sends an append entries request to each peer
+    pub fn send_entries(&mut self) -> () {
+        if self.pre_send_entries() {
+            println!("Peer {} is sending entries.", self.pid);
+            self.post_append_entries();
+            for i in 0..self.membership.len() {
+                // send an append entries request to each peer in the membership, except itself
+                if i as i32 != self.pid {
+                    self.append_entries(i);
+                }
+            }
+        }
+
+    }
+
     // Common operations when peers want to begin an election
     pub fn become_candidate(&mut self, msg:message::Message) {
         self.role = Role::CANDIDATE;
@@ -80,18 +111,22 @@ impl CommonState {
         }
     }
 
+    // pre conditions for request_vote
+    pub fn pre_request_vote(&self, index:usize) -> bool {
+        match self.role {
+            Role::CANDIDATE => !self.has_response(index as i32),
+            _ => {
+                println!("Peer {} cannot request a vote since it is not a candidate.", self.pid);
+                false
+            }
+        }
+    }
 
-    // Send a request vote message to a peer
+    // Sends a request vote request to peer at <index> in membership
     pub fn request_vote(&self, index:usize, msg:message::Message) -> () {
-    	match self.role {
-            Role::CANDIDATE => {
-                println!("Peer {} is sending a vote request to peer {}.", self.pid, index);
-                // Only send message if we haven't received a vote response from that peer
-                if !self.has_response(index as i32) {
-                    message::send_msg(&self.membership[index], msg);
-                }
-            },
-            _ => println!("Peer {} cannot request a vote since it is not a candidate.", self.pid)
+        if self.pre_request_vote(index) {
+            println!("Peer {} is sending a vote request to peer {}.", self.pid, index);
+            message::send_msg(&self.membership[index], msg);
         }
     }
 
@@ -104,46 +139,66 @@ impl CommonState {
         return entries;
     }
 
-
-    // Check if we have received a majority of votes
-    pub fn check_vote_majority(&self) -> bool {
-    	if !(self.granted_votes_rcvd.len() > (self.membership.len() / 2)) {
-            // we did not receive a majority of votes, so we cannot become the leader
-            return false;
-        }
-        println!("Peer {} received {} votes (majority).", self.pid, self.granted_votes_rcvd.len());
-        return true;
-    }
-
-    // Change state to leader
-    pub fn set_role_leader(&mut self) {
-    	self.role = Role::LEADER;
-        self.current_leader = Some(self.pid);
-    }
-
-    // Checks if the leader can update it's commit_index, and if successful applies the newly committed operations
-    pub fn update_commit_index(&mut self) -> () {
+    // pre condition for append entries
+    fn pre_append_entries(&self) -> bool {
         match self.role {
-            Role::LEADER => {
-                for index in (self.commit_index + 1) as usize..self.log.len() {
-                    // count the number of replicas that contain the log entry at index <index>
-                    let mut num_replicas = 0;
-                    for peer_match in &self.match_index {
-                        if *peer_match >= index as i32 {
-                            num_replicas += 1;
-                        }
-                    }
-                    if num_replicas > (self.membership.len() / 2) {
-                        // a majority of replicas contain the log entry
-                        self.commit_index += 1;
-                        println!("Peer {} (leader) updated commit index to {}.", self.pid, self.commit_index);
-                    }
-                    else {
-                        break; // ensure that there are no holes
-                    }
-                }
-            },
-            _ => println!("Peer {} cannot update commit index since it is not a leader.", self.pid)
+            Role::LEADER => true,
+            _ => {
+                println!("Peer {} cannot send an append entries request since it is not a leader.", self.pid);
+                false
+            }
+        }
+    }
+
+    // Sends an append entries request to peer at index <peer> in membership
+    pub fn append_entries(&mut self, peer:usize) -> () {
+        if self.pre_append_entries() {
+            println!("Peer {} is sending append_entries to {}.", self.pid, peer);
+            // Get the previous log index and term for the peer
+            let prev_log_index = self.next_index[peer] - 1;
+            let mut prev_log_term = 0;
+            if prev_log_index >= 0 && self.log.len() as i32 > prev_log_index {
+                prev_log_term = self.log[prev_log_index as usize].term;
+            }
+            // Get all new entries that need to be sent to the peer
+            let entries = self.get_entries_for_peer(peer);
+            // Create and send the append entries request message
+            let msg = self.create_append_entries_req_msg(entries, prev_log_index, prev_log_term);
+            println!("Peer {} is sending the msg {:?} to peer {}.", self.pid, msg.clone(), peer);
+            message::send_msg(&self.membership[peer], msg);
+        }
+    }
+
+    // pre conditions for become_leader
+    pub fn pre_become_leader(&self) -> bool {
+        match self.role {
+            Role::CANDIDATE => (self.granted_votes_rcvd.len() > (self.membership.len() / 2)),
+            _ => {
+                println!("Peer {} cannot become leader since it is not a candidate.", self.pid);
+                false
+            }
+        }
+    }
+
+    // post conditions for become_leader
+    pub fn post_become_leader(&mut self) {
+        self.role = Role::LEADER;
+        self.current_leader = Some(self.pid);
+        // set next index to be the same as our next index
+        self.next_index = vec![self.log.len() as i32; self.membership.len()];
+        // reset the match index to 0 (as far as we know, no logs in other peers match ours)
+        self.match_index = vec![0; self.membership.len()];
+        println!("Peer {} is now the leader.", self.pid);
+    }
+
+    // pre condition for update_commit_index
+    pub fn pre_update_commit_index(&self) -> bool {
+        match self.role {
+            Role::LEADER => true,
+            _ => {
+                println!("Peer {} cannot update commit index since it is not a leader.", self.pid);
+                false
+            }
         }
     }
 
@@ -173,62 +228,106 @@ impl CommonState {
         }
     }
 
-    // checks if a message is out of date
-    pub fn is_out_of_date(&self, msg_term:i32) -> bool {
-        return msg_term < self.current_term;
-    }
-
-    // Update state when voting for a candidate
-    pub fn prepare_vote(&mut self, candidate_pid:i32) -> (i32, bool) {
-    	println!("Peer {} has voted for peer {}.", self.pid, candidate_pid);
-        self.update_election_timeout();
-        // as far as we know, the candidate will become the leader
-        self.current_leader = Some(candidate_pid);
-        return (self.current_term, true);
-    }
-
-
-    // Checks if there are log conflicts (removing the conflicting entries, if they exist)
-    pub fn check_handle_log_conflicts(&mut self, prev_log_index:i32, leader_term:i32) -> bool {
-        if self.log[prev_log_index as usize].term != leader_term {
-            // remove the conflicting entry and all that follow it
-            let i = prev_log_index as usize;
-            while i < self.log.len() {
-                self.log.remove(i);
+    // check and handle log conflicts in a RequestAppend message
+    // returns TRUE if there was a conflict, FALSE otherwise
+    pub fn handle_log_conflicts(&mut self, msg:&message::RequestAppend) -> bool {
+        if msg.prev_log_index >= 0 { 
+            if msg.prev_log_index >= self.log.len() as i32 {
+                // we are missing entries
+                return true;
             }
-            return true; // conflicts 
+    
+            // check if we have conflicting entries
+            if self.log[msg.prev_log_index as usize].term != msg.prev_log_term {
+                // remove the conflicting entry and all that follow it
+                let i = msg.prev_log_index as usize;
+                while i < self.log.len() {
+                    self.log.remove(i);
+                }
+                return true;
+            }
+            // check if we have entries that the leader doesn't know we have (entries after the prev_log_index)
+            // if we do, remove them (we can still append the new entries afterwards)
+            // Note : this can happen for example when a response to an append_entries is lost in the network, so
+            //        the leader will resend entries that we had already added to our log
+            while msg.prev_log_index < (self.log.len() as i32) - 1 {
+                self.log.remove((msg.prev_log_index + 1) as usize); // remove every entry after the prev_log_index
+            }
+            return false;
         }
-        return false; // no conflicts
-    }
-
-
-    // Decrease next_index upon receiving a failed append_entries response
-    pub fn decrease_next_index(&mut self, follower_pid:i32) {
-    	self.next_index[follower_pid as usize] = cmp::max(self.next_index[follower_pid as usize] - 1, 0);
-    }
-
-
-    // update state to latest leader commit
-    pub fn update_commit_state(&mut self, leader_commit_index:i32) {
-        if leader_commit_index > self.commit_index {
-            self.commit_index = cmp::min(leader_commit_index, self.log.len() as i32);
+        else {
+            // if it is less than 0, means that we are receiving the first entry
+            // make sure that our log is empty
+            while self.log.len() > 0 {
+                self.log.remove(self.log.len() - 1);
+            }
+            return false;
         }
     }
 
+    // Receive and process an append entries request from a peer
+    pub fn handle_append_entries_request(&mut self, msg:message::RequestAppend) -> (i32, bool) {
+        println!("Peer {} received append_entries request from {}.", self.pid, msg.leader_pid);
+        if msg.leader_term < self.current_term {
+            // "old" message
+            return (self.current_term, false);
+        }
+        self.update_term(msg.leader_term);
+        self.update_election_timeout();
+        // as far as we know, we received a request from a valid leader
+        self.current_leader = Some(msg.leader_pid);
+        if !self.handle_log_conflicts(&msg) {
+            // if there were no conflicts, we can append the new entries to our log
+            self.log.append(&mut msg.entries.clone());
+            // update state to latest leader commit
+            if msg.leader_commit_index > self.commit_index {
+                self.commit_index = cmp::min(msg.leader_commit_index, (self.log.len() - 1) as i32);
+            }
+            // apply newly commited operations, if there are any
+            self.apply_new_commits();
+
+            return (self.current_term, true);
+        }
+        else {
+            return (self.current_term, false);
+        }
+    }
+
+    // pre conditions for handle_append_entries_response
+    pub fn pre_handle_append_entries_response(&mut self, msg:&message::ResponseAppend) -> bool {
+        match self.role {
+            Role::LEADER => {
+                if msg.follower_term > self.current_term {
+                    // we should step down, since there is a follower with an higher term than ours
+                    self.update_term(msg.follower_term);
+                    return false;
+                }
+                return true;
+            }
+            _ => {
+                println!("Peer {} cannot process response to append entries since it is not a leader.", self.pid);
+                return false;
+            }
+        }
+    }
+
+    // post conditions for handle_append_entries_response
+    pub fn post_handle_append_entries_response(&mut self, msg:&message::ResponseAppend) {
+        if !msg.success {
+            // decrease entry to be sent
+            self.next_index[msg.follower_pid as usize] = cmp::max(self.next_index[msg.follower_pid as usize] - 1, 0);
+        }
+        else {
+            self.next_index[msg.follower_pid as usize]  = msg.match_index as i32 + 1;
+        }
+        self.match_index[msg.follower_pid as usize] = msg.match_index as i32;
+    }
+
+    /* Auxiliary functions */
 
     // Checks if we already received a response from a peer with pid = <pid>
     pub fn has_response(&self, pid:i32) -> bool {
         return self.votes_rcvd.contains(&pid);
-    }
-
-    // if <term> is greater than current_term, then set current_term to be equal to <term> and step down (convert to follower)
-    pub fn update_term(&mut self, term:i32) {
-        if term > self.current_term { 
-            self.current_term = term;
-            self.role = Role::FOLLOWER;
-            //self.voted_for = None;            // TODO: CAREFUL IN RAFT
-            self.update_election_timeout();
-        }
     }
 
     // update the election timeout
@@ -262,6 +361,17 @@ impl CommonState {
         }
     }
 
+    // if <term> is greater than current_term, then set current_term to be equal to <term> and step down (convert to follower)
+    pub fn update_term(&mut self, term:i32) {
+        if term > self.current_term { 
+            self.current_term = term;
+            self.role = Role::FOLLOWER;
+            //self.voted_for = None;            // TODO: CAREFUL IN RAFT
+            self.update_election_timeout();
+        }
+    }
+
+    /* End of auxiliary functions */
 
     /* Common functions for creating messages */
 
@@ -295,11 +405,3 @@ impl CommonState {
 
 
 }
-
-
-
-
-
-
-
-

@@ -1,6 +1,7 @@
 // mca @ 49828
 
-// Written according to the article "Paxos VS Raft: Have we reached consensus on distributed consensus"
+// Implemented according to the article "Paxos VS Raft: Have we reached consensus on distributed consensus"
+// with some changes to handle sending multiple entries at the same time
 
 use crate::message;
 use crate::common::*;
@@ -27,7 +28,7 @@ impl Peer {
             match self.common.role {
                 Role::LEADER => {
                     if self.common.check_timed_out(self.common.heartbeat_timeout) {
-                        self.send_entries();
+                        self.common.send_entries();
                     }
                 },
                 _ => {
@@ -40,25 +41,6 @@ impl Peer {
             self.handle_messages();
         }
     }
-
-    // Loops through the membership and sends an append entries request to each peer
-    fn send_entries(&mut self) -> () {
-        match self.common.role {
-            Role::LEADER => {
-                self.common.update_heartbeat_timeout();
-                println!("Peer {} is sending entries.", self.common.pid);
-                for i in 0..self.common.membership.len() {
-                    // send an append entries request to each peer in the membership, except itself
-                    if i as i32 != self.common.pid {
-                        self.append_entries(i);
-                    }
-                }
-            },
-            _ => println!("Peer {} cannot send entries because it is not the leader", self.common.pid)
-        }
-    }
-
-
 
     /* Functions for main MultiPaxos operations */
 
@@ -78,50 +60,45 @@ impl Peer {
         self.common.become_candidate(self.create_request_vote_msg());
     }
 
-    // Sends an append entries request to peer at index <peer> in membership
-    fn append_entries(&mut self, peer:usize) -> () {
-        match self.common.role {
-            Role::LEADER => {
-                println!("Peer {} is sending append_entries to {}.", self.common.pid, peer);
-                // Get the previous log index and term for the peer
-                let prev_log_index = self.common.next_index[peer] - 1;
-                let mut prev_log_term = 0;
-                if prev_log_index >= 0 && self.common.log.len() as i32 > prev_log_index {
-                    prev_log_term = self.common.log[prev_log_index as usize].term;
-                }
-                // Get all new entries that need to be sent to the peer
-                let entries = self.common.get_entries_for_peer(peer);
-                // Create and send the append entries request message
-                let msg = self.common.create_append_entries_req_msg(entries, prev_log_index, prev_log_term);
-                println!("Peer {} is sending the msg {:?} to peer {}.", self.common.pid, msg.clone(), peer);
-                message::send_msg(&self.common.membership[peer], msg);
-            },
-            _ => println!("Peer {} cannot send an append entries request since it is not a leader.", self.common.pid)
+    // Assume role of leader
+    fn become_leader(&mut self) -> () {
+        if self.common.pre_become_leader() {
+            println!("Peer {} received {} votes (majority).", self.common.pid, self.common.granted_votes_rcvd.len());
+            // we can become the leader
+            self.common.post_become_leader();
+            // add entries received in the request_vote responses to our log, using our current_term
+            for e in self.entries.as_slice() {
+                let mut entry = e.clone();
+                entry.term = self.common.current_term;
+                self.common.log.push(entry);
+            }
+            println!("Peer {} is now the leader.", self.common.pid);
         }
     }
 
-    // Assume role of leader
-    fn become_leader(&mut self) -> () {
+    // Checks if the leader can update it's commit_index, and if successful applies the newly committed operations
+    fn update_commit_index(&mut self) -> () {
         match self.common.role {
-            Role::CANDIDATE => {
-                if !self.common.check_vote_majority() {
-                    return; // we do not have majority of votes
+            Role::LEADER => {
+                for index in (self.common.commit_index + 1) as usize..self.common.log.len() {
+                    // count the number of replicas that contain the log entry at index <index>
+                    let mut num_replicas = 0;
+                    for peer_match in &self.common.match_index {
+                        if *peer_match >= index as i32 {
+                            num_replicas += 1;
+                        }
+                    }
+                    if num_replicas > (self.common.membership.len() / 2) {
+                        // a majority of replicas contain the log entry
+                        self.common.commit_index = index as i32;
+                        println!("Peer {} (leader) updated commit index to {}.", self.common.pid, self.common.commit_index);
+                    }
+                    else {
+                        break; // ensure that there are no holes
+                    }
                 }
-                // we can become the leader
-                self.common.set_role_leader();
-                // set next index to be the one immediately after our commit index
-                self.common.next_index = vec![self.common.commit_index + 1; self.common.membership.len()];
-                // reset the match index to 0 (as far as we know, no logs in other peers match ours)
-                self.common.match_index = vec![0; self.common.membership.len()];
-                // add entries received in the request_vote responses to our log, using our current_term
-                for e in self.entries.as_slice() {
-                    let mut entry = e.clone();
-                    entry.term = self.common.current_term;
-                    self.common.log.push(entry);
-                }
-                println!("Peer {} is now the leader.", self.common.pid);
             },
-            _ => println!("Peer {} cannot become leader since it is not a candidate.", self.common.pid)
+            _ => println!("Peer {} cannot update commit index since it is not a leader.", self.common.pid)
         }
     }
 
@@ -187,75 +164,15 @@ impl Peer {
         }
     }
 
-    // Receive and process an append entries request from a peer
-    fn handle_append_entries_request(&mut self, msg:message::RequestAppend) -> (i32, bool) {
-        println!("Peer {} received append_entries request from {}.", self.common.pid, msg.leader_pid);
-        if self.common.is_out_of_date(msg.leader_term) {
-            // "old" message
-            return (self.common.current_term, false);
-        }
-        self.common.update_term(msg.leader_term);
-        self.common.update_election_timeout();
-        // as far as we know, we received a request from a valid leader
-        self.common.current_leader = Some(msg.leader_pid);
-        if msg.prev_log_index >= 0 { 
-            if msg.prev_log_index > self.common.log.len() as i32 {
-                // we are missing entries
-                return (self.common.current_term, false);
-            }
-    
-            // check if we have conflicting entries
-            if self.common.check_handle_log_conflicts(msg.prev_log_index, msg.leader_term) {
-                return (self.common.current_term, false);
-            }
-
-            // check if we have entries that the leader doesn't know we have (entries after the prev_log_index)
-            // if we do, remove them (we can still append the new entries afterwards)
-            // Note : this can happen for example when a response to an append_entries is lost in the network, so
-            //        the leader will resend entries that we had already added to our log
-            while msg.prev_log_index < (self.common.log.len() as i32) - 1 {
-                self.common.log.remove((msg.prev_log_index + 1) as usize); // remove every entry after the prev_log_index
-            }
-        }
-        else {
-            // if it is equal to 0, means that we are receiving the first entry
-            // make sure that our log is empty
-            while self.common.log.len() > 0 {
-                self.common.log.remove(self.common.log.len() - 1);
-            }
-        }
-        // if all checks pass, we can append the new entries to our log
-        self.common.log.append(&mut msg.entries.clone());
-        // update state to latest leader commit
-        self.common.update_commit_state(msg.leader_commit_index);
-        // apply newly commited operations, if there are any
-        self.common.apply_new_commits();
-
-        return (self.common.current_term, true);
-    }
-
     // Receive and process a response to an append entries from a peer
     fn handle_append_entries_response(&mut self, msg:message::ResponseAppend) -> () {
-        match self.common.role {
-            Role::LEADER => {
-                println!("Peer {} received append_entries response.", self.common.pid);
-                if msg.follower_term > self.common.current_term {
-                    // we should step down, since there is a follower with an higher term than ours
-                    self.common.update_term(msg.follower_term);
-                    return;
-                }
-                if !msg.success {
-                    // decrease entry to be sent
-                    self.common.decrease_next_index(msg.follower_pid);
-                }
-                self.common.match_index[msg.follower_pid as usize] = msg.match_index as i32;
-                self.common.next_index[msg.follower_pid as usize]  = msg.match_index as i32 + 1;
-
-                // see if we can commit any new entries
-                self.common.update_commit_index();
-                self.common.apply_new_commits(); // only succeeds if there are new commits
-            },
-            _ => println!("Peer {} cannot process response to append entries since it is not a leader.", self.common.pid)
+        if self.common.pre_handle_append_entries_response(&msg) {
+            println!("Peer {} received append_entries response.", self.common.pid);
+            self.common.post_handle_append_entries_response(&msg);
+            
+            // see if we can commit any new entries
+            self.update_commit_index();
+            self.common.apply_new_commits(); // only succeeds if there are new commits
         }
     }
 
@@ -294,7 +211,7 @@ impl Peer {
             Ok(m) => {
                 match m {
                     message::Message::REQAPPEND(req) => {
-                        let (_, res) = self.handle_append_entries_request(req.clone());
+                        let (_, res) = self.common.handle_append_entries_request(req.clone());
                         if res {
                             let msg = self.common.create_response_append_msg(self.common.pid, res, (self.common.log.len() as i32)-1);
                             message::send_msg(&req.sender, msg);
