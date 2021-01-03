@@ -437,8 +437,8 @@ impl Peer {
     // Receive and process a vote response from a peer
     fn handle_vote_response(&mut self, msg:rmessage::ResponseVote) -> () {
         if self.pre_handle_vote_response(&msg) {
-            self.update_term(msg.follower_term);
             self.post_handle_vote_response(&msg);
+            self.update_term(msg.follower_term);
         }
     }
 
