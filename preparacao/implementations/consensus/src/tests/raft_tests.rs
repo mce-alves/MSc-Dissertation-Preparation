@@ -48,7 +48,7 @@ pub fn test_nprocesses_multiple_proposals() {
 
     thread::sleep(time::Duration::from_secs(10));
     let mut rng = rand::thread_rng();
-    for i in 0..25 {
+    for i in 0..100 {
 
         let roll = rng.gen_range(0, NUM_PROCESSES);
         membership[roll as usize].send(Message::REQOP(RequestOperation {

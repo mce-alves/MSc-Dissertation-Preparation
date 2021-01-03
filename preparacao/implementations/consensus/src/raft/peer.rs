@@ -301,9 +301,14 @@ impl Peer {
                 }
                 if num_replicas > (self.membership.len() / 2) {
                     // a majority of replicas contain the log entry
-                    self.commit_index += 1;
-                    let time_elapsed = self.start_time.elapsed();
-                    println!("Peer {} (leader) updated commit index to {} after {} ms.", self.pid, self.commit_index, time_elapsed.as_millis());
+                    if self.log[index].term == self.current_term {
+                        // a leader can only commit entries from it's own term
+                        // (uncommitted entries from previous terms will get committed when the leader
+                        // commits one entry from his term)
+                        self.commit_index = index as i32;
+                        let time_elapsed = self.start_time.elapsed();
+                        println!("Peer {} (leader) updated commit index to {} after {} ms.", self.pid, self.commit_index, time_elapsed.as_millis());
+                    }
                 }
                 else {
                     break; // ensure that there are no holes
