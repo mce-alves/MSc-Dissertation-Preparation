@@ -1,3 +1,6 @@
 
 preparacao/implementations/consensus/target
 preparacao/implementations/multipaxos_vs_raft/target
+ocaml/blockchain/*.cmi
+ocaml/blockchain/*.cmo
+ocaml/blockchain/*.exe
