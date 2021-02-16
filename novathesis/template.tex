@@ -87,7 +87,7 @@
 %                               %     for valid color names, look at "svgname" 
 %                               %     in the "xcolor" package documentation
 
-\ntsetup{media=paper}         % The target media for the PDF
+\ntsetup{media=screen}         % The target media for the PDF
 %                               %     [ screen, paper ]
 %                               %     SCREEN ==> left and right margins are 
 %                               %                equal, colored links
@@ -99,7 +99,7 @@
 %                               %     under work/evaluation.   Only final versions 
 %                               %     should have the list of committee members.
 
-\ntsetup{printcopyright=false} % Should the copyright message be printed??
+\ntsetup{printcopyright=true} % Should the copyright message be printed??
 
 % \ntsetup{secondcover=true}    % Should a second cover page be printed?
 %                               %     if the contents for the second page are not 
@@ -185,6 +185,7 @@
 % syntax: \usepackage[options]{packagename}
 \usepackage{paralist}     % To enable costumizble enumerates.  See the documentation.
 \usepackage[textsize=footnotesize]{todonotes}  % To register TODO notes in the text
+\usepackage{url}
 \usepackage{wrapfig}      % FOR DEMO PURPOSES ONLY --- PLEASE REMOVE
 \usepackage{metalogo}     % FOR DEMO PURPOSES ONLY --- PLEASE REMOVE
 \usepackage{lipsum}       % FOR DEMO PURPOSES ONLY --- PLEASE REMOVE
@@ -198,22 +199,22 @@
 %%------------------------------------------------------------
 % Thesis/Dissertation title (valid for all languages unless redefined as below)
 % syntax: \nttitle{title}
-\nttitle{A Very Long and Impressive Thesis Title\\with a Forced Line Break}%
+\nttitle{Consensus Protocols Environments and Specifications}%
 % \nttitle[en]{The title in a Specific language}%
 
 %%------------------------------------------------------------
 % Degree customization - majorfield
 % See below for the degrees in Computer Science @ FCT-NOVA
 % syntax: \ntmajorfield(language){name}
-\ntmajorfield(pt){\embrace{Área Científica}}
-\ntmajorfield(en){\embrace{Scientific Field}}
+\ntmajorfield(pt){\embrace{Engenharia Informática}}
+\ntmajorfield(en){\embrace{Computer Science and Engineering}}
 
 %%------------------------------------------------------------
 % Degree customization - ntdegreename
 % See below for the degrees in Computer Science @ FCT-NOVA
 % syntax: \ntdegreename(language){name}
-\ntdegreename(pt){\embrace{Designação do Curso}}
-\ntdegreename(en){\embrace{Study Program Name}}
+\ntdegreename(pt){\embrace{Mestrado Integrado em Engenharia Informática}}
+\ntdegreename(en){\embrace{Integrated Master in Computer Science and Engineering}}
 
 %%% Uncomment for MSc and PhD in Computer Science @ FCT-NOVA 
 % \ifphddoc{%
@@ -256,26 +257,26 @@
 % Author full name, abbreviated name, and gender
 %   use [f] for female and [m] for male author
 %   syntax: \ntauthorname(language){full name}{abbreviated name}
-\ntauthorname[m]{John Longname Doe}{John Doe}
+\ntauthorname[m]{Miguel Cerdeira Alves}{Miguel Alves}
 
 %%------------------------------------------------------------
 % Author previous degree
 %   syntax: \ntauthordegree{degree}
-\ntauthordegree{Master of Science}
+\ntauthordegree{Bachelor in Computer Science and Engineering}
 
 %%------------------------------------------------------------
 % Submission date
 %   syntax: \ntdatemonth{month}
 %           \ntdateyear{year}
-\ntdatemonth{\embrace{month}}
-\ntdateyear{\embrace{year}}
+\ntdatemonth{\embrace{February}}
+\ntdateyear{\embrace{2021}}
 
 %%------------------------------------------------------------
 % Advisers' gender and info (name, position, school, etc)
 %   use [f] for female and [m] for male
 %   use "\\" to break the lines in the appropriate place
 %   syntax: \ntaddperson{adviser}[gender]{Name, Position, School}
-\ntaddperson{adviser}[f]{{Mary Doe Adviser Name, \\Full Professor, NOVA University Lisbon}}
+\ntaddperson{adviser}[m]{{António Ravara, \\Associate Professor, NOVA School of Science and Technology}}
 % \ntaddperson{adviser}[f]{{Mary Doe other Adviser Name, Full Professor, NOVA University Lisbon}}
 % \ntaddperson{adviser}[f]{{Mary Doe yet another Adviser Name, Full Professor, NOVA University Lisbon}}
 
@@ -284,8 +285,7 @@
 %   use [f] for female and [m] for male
 %   use "\\" to break the lines in the appropriate place
 %   syntax: \ntaddperson{coadviser}[gender]{Name, Position, School}
-\ntaddperson{coadviser}[f]{John Doe Co-Adviser Name, \\Associate Professor, NOVA University Lisbon}
-\ntaddperson{coadviser}[f]{John Doe other Co-Adviser Name, \\Full Professor, NOVA University Lisbon}
+\ntaddperson{coadviser}[m]{Marco Giunti, \\Researcher, NOVA School of Science and Technology}
 
 %%------------------------------------------------------------
 % Committee members
@@ -366,13 +366,13 @@
 %%------------------------------------------------------------
 % Text appendixes 
 % syntax: \ntaddfile{appendix}{filename}
-\ntaddfile{appendix}{appendix1}
-\ntaddfile{appendix}{appendix2}
+% \ntaddfile{appendix}{appendix1}
+% \ntaddfile{appendix}{appendix2}
 
 %%------------------------------------------------------------
 % Text annexes
 % syntax: \ntaddfile{annex}{filename}
-\ntaddfile{annex}{annex1}
+% \ntaddfile{annex}{annex1}
 % \ntaddfile{annex}{annex2}
 
 %%------------------------------------------------------------
@@ -388,10 +388,10 @@
 %%------------------------------------------------------------
 % syntax: \ntaddindex{index-name}
 \ntaddindex{tableofcontents}    % The Table of Contents. Probably you want ot leave this as is! ;)
-\ntaddindex{listoffigures}      % The List of Figures. Comment to omit.
-\ntaddindex{listoftables}       % The List of Tables. Comment to omit.
-\ntaddindex{listoflistings}     % The List of Listings. Comment to omit.
-\ntaddindex{listsofglossaries}  % The Glossary, and the lists of Acronyms and Symbols
+% \ntaddindex{listoffigures}      % The List of Figures. Comment to omit.
+% \ntaddindex{listoftables}       % The List of Tables. Comment to omit.
+% \ntaddindex{listoflistings}     % The List of Listings. Comment to omit.
+% \ntaddindex{listsofglossaries}  % The Glossary, and the lists of Acronyms and Symbols
 
 %%============================================================
 %%  END OF TEMPLATE CUSTOMIZATION
