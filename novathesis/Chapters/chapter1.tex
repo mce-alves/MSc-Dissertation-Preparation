@@ -1,0 +1,66 @@
+%!TEX root = ../template.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% chapter1.tex
+%% NOVA thesis document file
+%%
+%% Chapter with introduction
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\typeout{NT LOADING FILE chapter1.tex}
+
+\chapter{Introduction}
+\label{cha:introduction}
+
+%% You may define new commands in the main text.  These commands will 
+%% be valid from this point until the end of the document.
+ 
+
+% epigraph configuration
+% \epigraphfontsize{\small\itshape}
+% \setlength\epigraphwidth{12.5cm}
+% \setlength\epigraphrule{0pt}
+% 
+% \epigraph{
+%   This work is licensed under the \href{LaTeX project public license}{\LaTeX\ Project Public License v1.3c}.
+%   To view a copy of this license, visit \url{LaTeX project public license}.
+% }
+
+\section{Context}
+
+\begin{itemize}
+  \item brief overview of what blockchain is and why it is relevant
+  \item different aspects involved in developing blockchain technologies
+  \item current challenges (verification, validation, simulation, DSLs for clear and concise presentation of the protocols)
+\end{itemize}
+
+
+
+\section{Problem}
+
+\begin{itemize}
+  \item dividing blockchain protocols into essential components, to better abstract and extract their commonalities and key differences
+  \item the need for blockchain simulation
+  \begin{itemize}
+    \item a blockchain protocol is composed of several underlying components/algorithms, and each of which may have several parameters that can influence the performance and execution of the overall system. It is therefore important to be able to reason about the choice of these parameters before deploying to production
+    \item finding the fundamental aspects and the best building blocks to structure the presentation of the protocols (at the right level of abstraction, to allow reusability) and develop an extensible blockchain simulator
+  \end{itemize}
+\end{itemize}
+
+
+
+
+\section{Goal}
+
+\begin{itemize}
+  \item modular and extensible blockchain simulator, providing the ability to make changes to protocols, and the ability to simulate different families of protocols
+  \item ability to parameterize the different components (underlying algorithms) of the protocols
+  \item structured according to the 5-component framework presented in (Survey Of Distributed Consensus Protocols for Blockchain Networks)
+  \item ability to perform some level of validation/evaluation on the simulator’s results?
+  \item study the evolution of the protocols when adjusting different parameters (the goal is not to accurately simulate a real system, but rather to support decisions with respect to new versions/protocols)
+  \item the intended simulator should provide a qualitative evaluation of the protocol, rather than evaluate its efficiency
+  \item should provide researchers results that allow them to reason about certain implementation details
+  \begin{itemize}
+    \item how many adversaries are supported
+    \item “fairness” when handling stakeholders with different weights
+  \end{itemize}
+\end{itemize}

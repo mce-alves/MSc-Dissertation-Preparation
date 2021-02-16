@@ -1,0 +1,87 @@
+%!TEX root = ../template.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% chapter3.tex
+%% NOVA thesis document file
+%%
+%% Chapter with a short latex tutorial and examples
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\typeout{NT LOADING FILE chapter3.tex}
+
+\chapter{State of the Art}
+\label{cha:state-of-the-art}
+
+Blockchain simulation isn’t necessarily a new concept, however it is still rather unexplored. Although there have been several simulators developed to test and validate the performance of specific blockchain systems, such as Blockchain Simulator [1], Bitcoin Network Simulator [2] and eVIBES [3], only a small number of simulators have been developed with the goal of providing extensibility to simulate several families of blockchain protocols.
+
+We will describe existing extensible blockchain simulators, namely BlockSim [4], BlockSim [5] and VIBES [7], since their scope is similar to this work.
+
+
+\section{BlockSim: Blockchain Simulator}
+\label{sec:blocksim1}
+
+BlockSim [4] is a simulation framework developed in Python that assists in the design, implementation and evaluation of blockchain protocols. It provides insights regarding how a blockchain system operates and allows the examination of certain assumptions on the chosen simulation models, without incurring in the overhead of developing and deploying  a real network.
+
+BlockSim uses probabilistic distributions to model random phenomena, such as the time taken to validate a block and network latency to deliver a message, among others. These probability distributions can be specified by the user, in configuration files.
+
+The core of the simulator is its Discrete Event Simulation Engine, providing primitives for event generation, scheduling and execution, and allowing different processes to communicate with each other through events. The Transaction and Node Factories are responsible for creating batches of random transactions and instantiating nodes, respectively. Finally there is the Monitor, whose purpose is to capture metrics during the simulation.
+
+Blocksim uses different detached layers to provide the needed abstraction level to support different blockchain protocols, namely:
+
+\begin{itemize}
+	\item Node layer - specifies the responsibilities and behaviour of a node.
+	\item Consensus layer - specifies the algorithms and rules for a given consensus protocol.
+	\item Ledger layer - defines how a ledger is structured and stored.
+	\item Transaction and block layer - specify how information is represented and transmitted.
+	\item Network layer - establishes how nodes communicate with each other.
+	\item Cryptographic layer - defines what cryptographic functions will be used and how.
+\end{itemize}
+
+For each of these layers, a base model is provided which the user can extend, and BlockSim also provides examples of how these models were extended to simulate Bitcoin and Ethereum1.
+
+
+\section{BlockSim: An Extensible Simulation Tool for Blockchain Systems}
+\label{sec:blocksim2}
+
+BlockSim [5] is a discrete-event simulation framework developed in Python, with the purpose of exploring the effects of configuration, parameterization and design decisions on the behavior of blockchain systems, by providing intuitive simulation constructs.
+
+BlockSim has three main modules: the Simulation Module, the Base Module and the Configuration Module. The Simulation Module is composed of four classes - Event, Scheduler, Statistics and Main - and is in charge of setting up the simulation, scheduling events and computing simulation statistics. The Configuration Module acts as the main user interface, where users can select and parameterize the models used in the simulation. Finally, the Base Module consists in the base implementation of the blockchain protocol that will be simulated.
+
+To support a variety of different blockchain protocols, the Base Module is divided according to the following abstraction layers:
+
+\begin{itemize}
+	\item Network layer - defines the blockchain’s nodes, their behavior and the underlying peer-to-peer protocol to exchange data between them.
+	\item Consensus layer - defines the algorithms and rules adopted to reach agreement about the current state of the blockchain ledger.
+	\item Incentives layer - defines the economic incentives mechanisms adopted by a blockchain to issue and distribute rewards among the participating nodes.
+\end{itemize}
+
+For each of these abstraction layers, an extendable implementation is provided.
+
+
+\section{VIBES: Fast Blockchain Simulations for Large-scale Peer-to-Peer Networks}
+\label{sec:vibes}
+
+VIBES [7] is a message-driven blockchain simulator developed in Scala, with the goal of enabling fast, scalable and configurable blockchain network simulations on a single computer.
+
+Architecturally, VIBES is composed of Actors. These Actors can have one of three main types: Node, Reducer or Coordinator.
+
+A Node follows a simple protocol to replicate the behavior of a blockchain network, whether it is a full-node or a miner node. The Reducer, once the simulation ends, gathers the state of the network and produces an output with the simulation results that the user of the simulator can process.
+
+The Coordinator is essential for providing scalability and speed. This is done by acting as an application-level scheduler that fast-forwards computing time. In practice, each Node estimates how long it will take to complete a certain task, such as mining a block, and asks the Coordinator to fast-forward the entire network to that point in time. Once the Coordinator has gathered fast-forward requests from all Nodes, it will fast-forward the entire network to the time referred by the request with the earliest timestamp thus guaranteeing a correct order of execution of tasks.
+
+
+\section{Critical Analysis}
+\label{sec:critical_analysis}
+
+\todo{insert the table with the properties of each simulator}
+
+VIBES [7] is scalable, fast, and is capable of being extended to blockchain protocols other than bitcoin, although requiring some changes to be made to the simulation engine [3]. However, it does not follow any abstraction mechanisms to specify the protocols to be simulated, which would increase it’s extensibility.
+
+Neither BlockSim [4] nor BlockSim [5] model adversarial behaviour, nor do they provide a concrete foundation for simulating families of blockchain protocols based on proof of stake.
+
+Both BlockSim [4] and BlockSim [5] define different abstraction layers to facilitate the simulation of different blockchain protocols. However, we believe that using finer-grained abstraction layers is advantageous.
+
+\vspace{0.25cm}
+
+Hence, this thesis intends to fill this gap by providing a simulator that models adversarial behavior, models more families of protocols besides proof of work and defines concrete, finer-grained abstraction layers for modeling blockchain protocols, thus achieving better code structure and reusability, and enhancing the readability and understandability of the simulated protocolos.
+
+
