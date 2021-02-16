@@ -23,7 +23,7 @@ Consensus protocols enable coordination between multiple machines, allowing them
 
 These protocols are widely used in the context of state machine replication, where different processes execute the same operations on the same state.
 
-It is expected that a consensus protocol ensures the following properties [18]:
+It is expected that a consensus protocol ensures the following properties \cite{dist_sys_book}:
 
 \begin{enumerate}
   \item Termination - eventually, every correct process accepts a value.
@@ -31,14 +31,14 @@ It is expected that a consensus protocol ensures the following properties [18]:
   \item Integrity - if all correct processes proposed the same value, then all correct processes accept that same value. A stronger integrity constraint for Byzantine fault tolerant consensus is: if a correct process accepts a value v, then v must have been previously proposed by some correct process.
 \end{enumerate}
 
-We will now present Single-Decree Paxos [8], that allows different machines to agree on a single value out of several proposed values. Then we will present  Raft [9][10] and Multi-Decree Paxos [9][16][17], which introduce the concept of a replicated log of operations and ensure that all correct processes will execute these operations in the same order on the same state.
+We will now present Single-Decree Paxos \cite{paxos_made_simple}, that allows different machines to agree on a single value out of several proposed values. Then we will present  Raft \cite{paxos_vs_raft}\cite{raft} and Multi-Decree Paxos \cite{paxos_vs_raft}\cite{paxos_complex}\cite{paxos_live}, which introduce the concept of a replicated log of operations and ensure that all correct processes will execute these operations in the same order on the same state.
 
 
 \subsection{Single-Decree Paxos}
 
-The Single-Decree Paxos protocol [8] is used to achieve consensus on a single value, and it has no notion of a replicated log. Each entity involved in the protocol is called a peer, and each peer can assume one, or multiple, of the following roles: Proposer, Acceptor and Learner. The protocol progresses through the exchange of messages between peers as demonstrated, in a simplified way, in figure x. The description of the peer’s behavior will be divided among the different roles, to improve readability.
+The Single-Decree Paxos protocol \cite{paxos_made_simple} is used to achieve consensus on a single value, and it has no notion of a replicated log. Each entity involved in the protocol is called a peer, and each peer can assume one, or multiple, of the following roles: Proposer, Acceptor and Learner. The protocol progresses through the exchange of messages between peers as demonstrated, in a simplified way, in figure x. The description of the peer’s behavior will be divided among the different roles, to improve readability.
 
-When a peer receives a value from a client, it begins behaving like a Proposer. A Proposer executes the following steps [8]:
+When a peer receives a value from a client, it begins behaving like a Proposer. A Proposer executes the following steps \cite{paxos_made_simple}:
 
 \begin{enumerate}
   \item Sends a PREPARE message to all the other peers, which contains the proposal number that it intends to use in a future proposal.
@@ -56,7 +56,7 @@ Upon receiving a PREPARE message, an Acceptor will respond in one of three ways 
   \item If the Acceptor has already accepted a value, it will respond with a PROMISE message containing the highest proposal number it has seen so far, and the value that it has accepted.
 \end{enumerate}
 
-Upon receiving a PROPOSE message, an Acceptor will respond in one of two ways [8]:
+Upon receiving a PROPOSE message, an Acceptor will respond in one of two ways \cite{paxos_made_simple}:
 
 \begin{enumerate}
   \item If it hasn’t accepted any proposals yet, and the proposal number is larger than or equal to the largest proposal number it has seen so far, the Acceptor will accept the value and will respond with an ACCEPT message.
@@ -74,7 +74,7 @@ It is important to note that, in the presence of concurrent proposals, the Singl
 
 \subsection{Raft}
 
-The Raft protocol [10] is used in the context of log replication, ensuring consensus on the order in which the operations contained in the log entries will be applied. Each entity involved in the protocol is called a peer, and in any given instant a peer can have one of three roles: Follower, Candidate or Leader.
+The Raft protocol \cite{raft} is used in the context of log replication, ensuring consensus on the order in which the operations contained in the log entries will be applied. Each entity involved in the protocol is called a peer, and in any given instant a peer can have one of three roles: Follower, Candidate or Leader.
 
 Each peer stores a term and a log. The term is used alongside the size of the log to keep track of how up-to-date each peer is. The base structure of the log can be seen in the figure below:
 
@@ -82,7 +82,7 @@ Each peer stores a term and a log. The term is used alongside the size of the lo
 
 The protocol can be implemented using message exchange or RPCs (Remote Procedure Calls). 
 
-The following are the descriptions of each role’s behavior, as presented in the official paper [10]:
+The following are the descriptions of each role’s behavior, as presented in the official paper \cite{raft}:
 
 When a peer has the Follower role, it’s behavior is mostly based on the execution of RPCs, with a few exceptions.
 
@@ -123,7 +123,7 @@ The Raft protocol guarantees that peers will reach a consensus on the order of t
 
 The Single-Decree Paxos protocol describes how to reach a consensus on a single value however, in a majority of scenarios, this is not enough to maintain a proper state of a system. Multi-Decree Paxos is essentially a sequential execution of multiple Single-Decree Paxos rounds, to achieve log replication. 
 
-There are several papers that present somewhat different descriptions of Multi-Decree Paxos, such as [16], [17] and [9]. For now, we will present the protocol as described in “Paxos Made Live - An Engineering Perspective” [17].
+There are several papers that present somewhat different descriptions of Multi-Decree Paxos, such as \cite{paxos_comple}, \cite{paxos_live} and \cite{paxos_vs_raft}. For now, we will present the protocol as described in “Paxos Made Live - An Engineering Perspective” \cite{paxos_live}.
 
 The state kept by each peer is very similar to the state kept in Single-Decree Paxos, with the addition of the log entries and the identity of the last known leader.
 
@@ -162,15 +162,15 @@ The object of the consensus is a chain of blocks, as depicted in figure x. Howev
 
 There are two main types of blockchain networks, permissioned and permissionless.
 
-A permissioned blockchain, also referred to as a private blockchain, is a closed network where only authorized nodes can join and participate in the blockchain protocol. This does however require a centralized authority that regulates who can join the network. An example of a permissioned blockchain is Hyperledger Fabric [15].
+A permissioned blockchain, also referred to as a private blockchain, is a closed network where only authorized nodes can join and participate in the blockchain protocol. This does however require a centralized authority that regulates who can join the network. An example of a permissioned blockchain is Hyperledger Fabric \cite{hyperledger_fabric}.
 
-A permissionless blockchain, also referred to as a public blockchain, allows any node to join the network and execute the blockchain protocol, and is therefore a fully decentralized environment. It is common for these blockchains to employ some type of incentive mechanism to strengthen its security. Some examples of permissionless blockchains are Bitcoin [12], Ethereum [13] and Algorand [14].
+A permissionless blockchain, also referred to as a public blockchain, allows any node to join the network and execute the blockchain protocol, and is therefore a fully decentralized environment. It is common for these blockchains to employ some type of incentive mechanism to strengthen its security. Some examples of permissionless blockchains are Bitcoin \cite{bitcoin}, Ethereum \cite{ethereum_whitepaper} and Algorand \cite{algorand_scale_byz_agreements}.
 
 Several permissionless blockchains can also execute on permissioned environments, often more efficiently and securely.
 
 \subsection{Five-Component Framework}
 
-To further explain blockchain protocols, we will first describe the five-component framework presented in “A Survey of Distributed Consensus Protocols for Blockchain Networks” [11], as it is the abstraction mechanism that we adopted to specify these protocols.
+To further explain blockchain protocols, we will first describe the five-component framework presented in “A Survey of Distributed Consensus Protocols for Blockchain Networks” \cite{survey_bchain_networks}, as it is the abstraction mechanism that we adopted to specify these protocols.
 
 The authors identify five core components of blockchain protocols: block proposal, information propagation, block validation, block finalization and incentive mechanism.
 
@@ -219,9 +219,9 @@ The incentive mechanism includes the protocol’s functionalities that promote t
 
 \subsection{Bitcoin}
 
-Bitcoin [12][19] is a permissionless blockchain network that manages a decentralized digital currency (which is also referred to as bitcoin), allowing online payments to be sent directly between two entities, without the need for a third party central authority. Honest peers work together to make the system trustworthy by validating transactions, creating blocks through proof of work and appending them to the blockchain.
+Bitcoin \cite{bitcoin} is a permissionless blockchain network that manages a decentralized digital currency (which is also referred to as bitcoin), allowing online payments to be sent directly between two entities, without the need for a third party central authority. Honest peers work together to make the system trustworthy by validating transactions, creating blocks through proof of work and appending them to the blockchain.
 
-The following is a description, divided according to the five component framework [11], of the protocol executed in the bitcoin network [12][19][20].
+The following is a description, divided according to the five component framework \cite{survey_bchain_networks}, of the protocol executed in the bitcoin network \cite{bitcoin} \cite{info_propagation_bitcoin}.
 
 
 \vspace{0.5cm}
@@ -267,9 +267,9 @@ A node is incentivized to mine a valid block, as he not only receives transactio
 
 \subsection{Algorand}
 
-Algorand [14][21][22] is a blockchain network that manages a cryptocurrency, designed to confirm transactions on the order of one minute. At its core, Algorand uses a Byzantine Fault Tolerant agreement protocol, that is not only scalable to many users, but also allows the network to reach consensus on a new block with low latency and with a low risk of creating forks. The protocol also satisfies user replaceability, allowing for a different subset of users to participate in different steps of the agreement protocol, providing tolerance against targeted denial of service attacks.
+Algorand \cite{algorand_scale_byz_agreements} \cite{algorand_agreement} is a blockchain network that manages a cryptocurrency, designed to confirm transactions on the order of one minute. At its core, Algorand uses a Byzantine Fault Tolerant agreement protocol, that is not only scalable to many users, but also allows the network to reach consensus on a new block with low latency and with a low risk of creating forks. The protocol also satisfies user replaceability, allowing for a different subset of users to participate in different steps of the agreement protocol, providing tolerance against targeted denial of service attacks.
 
-The following is a description, divided according to the five component framework [11], of the protocol executed in the algorand network [21][22].
+The following is a description, divided according to the five component framework \cite{survey_bchain_networks}, of the protocol executed in the algorand network \cite{algorand_scale_byz_agreements} \cite{algorand_agreement}.
 
 
 \vspace{0.5cm}
@@ -305,7 +305,7 @@ Upon receiving a block, a node will validate the transactions contained in the b
 
 Cryptographic sortition may select multiple nodes to propose a block in a given round. To reach consensus on a single block to be appended to the chain, the agreement protocol is executed.
 
-Each node begins the agreement protocol with the block with highest associated priority they have received. Each node then executes the following steps [22], in sequential rounds (also referred to as periods), until consensus is reached:
+Each node begins the agreement protocol with the block with highest associated priority they have received. Each node then executes the following steps \cite{algorand_agreement}, in sequential rounds (also referred to as periods), until consensus is reached:
 
 \begin{enumerate}
   \item Execute cryptographic sortition to check whether the node was selected to be part of the committee for that period. Note that a new period begins when a node receives a majority of next-votes for some block in the previous period.
@@ -332,9 +332,11 @@ Nodes receive a reward upon creating a block that gets successfully added to the
 
 \subsection{Ethereum}
 
-Ethereum [13][23] is a permissionless blockchain network that manages a cryptocurrency, ether, and supports a built-in Turing-complete programming language that users can leverage to create smart contracts and decentralized applications that can specify state transition functions. The execution of these pieces of code can be triggered by messages and transactions.
+Ethereum \cite{ethereum_whitepaper} \cite{ethereum_yellowpaper} is a permissionless blockchain network that manages a cryptocurrency, ether, and supports a built-in Turing-complete programming language that users can leverage to create smart contracts and decentralized applications that can specify state transition functions. The execution of these pieces of code can be triggered by messages and transactions.
 
-The following is a description, divided according to the five component framework [11], of the protocol executed in the Ethereum network [13][23]. For clarification, this is a description of the Ethereum 1 protocol. An overview of the key functionalities introduced by the currently deployed version of Ethereum 2 [x] will be presented afterwards.
+The following is a description, divided according to the five component framework \cite{survey_bchain_networks}, of the protocol executed in the Ethereum network \cite{ethereum_whitepaper} \cite{ethereum_yellowpaper}. For clarification, this is a description of the Ethereum 1 protocol. An overview of the key functionalities introduced by the currently deployed version of Ethereum 2 [x] will be presented afterwards.
+
+\todo{add ethereum2 citation}
 
 \vspace{0.5cm}
 
@@ -374,9 +376,9 @@ As with the longest chain rule, when a block is sufficiently deep in the chain, 
 
 \textbf{Block Finalization in Ethereum 2}
 
-The current state of Ethereum 2 is a hybrid proof of stake and proof of work protocol. It builds on top of the Ethereum 1 proof of work implementation, adding a checkpointing mechanism to block finalization, using the CasperFFG protocol [x].
+The current state of Ethereum 2 is a hybrid proof of stake and proof of work protocol. It builds on top of the Ethereum 1 proof of work implementation, adding a checkpointing mechanism to block finalization, using the CasperFFG protocol \cite{casperffg}.
 
-CasperFFG [x] allows nodes to maintain a checkpoint tree and vote on a chain of checkpoints, resolving forks and finalizing the blocks on the agreed chain.
+CasperFFG \cite{casperffg} allows nodes to maintain a checkpoint tree and vote on a chain of checkpoints, resolving forks and finalizing the blocks on the agreed chain.
 
 Every time a node appends a block to the chain, with that block’s height being a multiple of 100, that block is considered a valid checkpoint block.
 
