@@ -36,47 +36,47 @@ We will now present Single-Decree Paxos \cite{paxos_made_simple}, that allows di
 
 \subsection{Single-Decree Paxos}
 
-The Single-Decree Paxos protocol \cite{paxos_made_simple} is used to achieve consensus on a single value, and it has no notion of a replicated log. Each entity involved in the protocol is called a peer, and each peer can assume one, or multiple, of the following roles: Proposer, Acceptor and Learner. The protocol progresses through the exchange of messages between peers as demonstrated, in a simplified way, in figure x. The description of the peer’s behavior will be divided among the different roles, to improve readability.
+The Single-Decree Paxos protocol \cite{paxos_made_simple} is used to achieve consensus on a single value, and it has no notion of a replicated log. Each entity involved in the protocol is called a peer, and each peer can assume one, or multiple, of the following roles: \textit{Proposer}, \textit{Acceptor} and \textit{Learner}. The protocol progresses through the exchange of messages between peers as demonstrated, in a simplified way, in figure x. \todo{update reference after adding the figure} The description of the peer’s behavior will be divided among the different roles, to improve readability.
 
 When a peer receives a value from a client, it begins behaving like a Proposer. A Proposer executes the following steps \cite{paxos_made_simple}:
 
 \begin{enumerate}
-  \item Sends a PREPARE message to all the other peers, which contains the proposal number that it intends to use in a future proposal.
-  \item Waits for the responses to it’s PREPARE message, which are called PROMISES. Upon receiving a PROMISE from a majority of peers, the Proposer proceeds to send a PROPOSE message to all the peers - note that if any of the received PROMISES contained the information of an already accepted value, this Proposer will have to propose that same accepted value.
-  \item Finally, if the Proposer receives an ACCEPT response from a majority of peers, then it has achieved consensus on it’s proposal and can inform the Learners - implementation dependent - and the client.
+  \item Sends a \texttt{PREPARE} message to all the other peers, which contains the proposal number that it intends to use in a future proposal.
+  \item Waits for the responses to it’s \texttt{PREPARE} message, which are called \texttt{PROMISES}. Upon receiving a \texttt{PROMISE} from a majority of peers, the Proposer proceeds to send a \texttt{PROPOSE} message to all the peers - note that if any of the received \texttt{PROMISES} contained the information of an already accepted value, this Proposer will have to propose that same accepted value.
+  \item Finally, if the Proposer receives an \texttt{ACCEPT} response from a majority of peers, then it has achieved consensus on it’s proposal and can inform the Learners (implementation dependent) and the client.
 \end{enumerate}
 
-An Acceptor keeps a record of the received PREPARE and PROPOSE messages, and whether or not a value was already accepted. It’s behavior consists in processing messages from Proposers and sending the appropriate responses.
+An Acceptor keeps a record of the received \texttt{PREPARE} and \texttt{PROPOSE} messages, and whether or not a value was already accepted. It’s behavior consists in processing messages from Proposers and sending the appropriate responses.
 
-Upon receiving a PREPARE message, an Acceptor will respond in one of three ways [8]:
+Upon receiving a \texttt{PREPARE} message, an Acceptor will respond in one of three ways \cite{paxos_made_simple}:
 
 \begin{enumerate}
-  \item If the proposal number in the PREPARE message is the largest the Acceptor has seen so far and it hasn’t accepted values yet, the Acceptor will respond with a PROMISE message containing the received proposal number, and from that moment forward the Acceptor will ignore any messages that contain a smaller proposal number.
-  \item If the proposal number is not the largest the Acceptor has seen so far and it hasn’t accepted any values yet, it will simply ignore the PREPARE message.
-  \item If the Acceptor has already accepted a value, it will respond with a PROMISE message containing the highest proposal number it has seen so far, and the value that it has accepted.
+  \item If the proposal number in the \texttt{PREPARE} message is the largest the Acceptor has seen so far and it hasn’t accepted values yet, the Acceptor will respond with a \texttt{PROMISE} message containing the received proposal number, and from that moment forward the Acceptor will ignore any messages that contain a smaller proposal number.
+  \item If the proposal number is not the largest the Acceptor has seen so far and it hasn’t accepted any values yet, it will simply ignore the \texttt{PREPARE} message.
+  \item If the Acceptor has already accepted a value, it will respond with a \texttt{PROMISE} message containing the highest proposal number it has seen so far, and the value that it has accepted.
 \end{enumerate}
 
-Upon receiving a PROPOSE message, an Acceptor will respond in one of two ways \cite{paxos_made_simple}:
+Upon receiving a \texttt{PROPOSE} message, an Acceptor will respond in one of two ways \cite{paxos_made_simple}:
 
 \begin{enumerate}
-  \item If it hasn’t accepted any proposals yet, and the proposal number is larger than or equal to the largest proposal number it has seen so far, the Acceptor will accept the value and will respond with an ACCEPT message.
-  \item If it has already accepted a value, or it has seen a larger proposal number, the Acceptor will respond with a REJECT message or simply ignore the proposal - implementation dependent.
+  \item If it hasn’t accepted any proposals yet, and the proposal number is larger than or equal to the largest proposal number it has seen so far, the Acceptor will accept the value and will respond with an \texttt{ACCEPT} message.
+  \item If it has already accepted a value, or it has seen a larger proposal number, the Acceptor will respond with a \texttt{REJECT} message or simply ignore the proposal - implementation dependent.
 \end{enumerate}
 
-Finally, the Learner role represents the entity that will “learn” the value for which consensus was reached. In real systems the Learners are, for example, databases. Therefore, in the articles that describe the protocol, there is very little information about the Learner’s behavior.
+Finally, the Learner role represents the entity that will “learn” the value for which consensus was reached. In real systems the Learner are, for example, databases. Therefore, in the articles that describe the protocol, there is very little information about the Learner’s behavior.
 
 \todo{*figure demonstrating the sequence of messages that leads to progress in the protocol*}
 
-It is important to note that, in the presence of concurrent proposals, the Single-Decree Paxos protocol may not terminate as different proposers might send consecutive PREPARE messages with higher proposal numbers for an indefinite amount of time. However, it does guarantee that if consensus is reached, all Learners will “learn” that same agreed upon value.
+It is important to note that, in the presence of concurrent proposals, the Single-Decree Paxos protocol may not terminate as different proposers might send consecutive \texttt{PREPARE} messages with higher proposal numbers for an indefinite amount of time. However, it does guarantee that if consensus is reached, all Learner will “learn” that same agreed upon value.
 
 
 
 
 \subsection{Raft}
 
-The Raft protocol \cite{raft} is used in the context of log replication, ensuring consensus on the order in which the operations contained in the log entries will be applied. Each entity involved in the protocol is called a peer, and in any given instant a peer can have one of three roles: Follower, Candidate or Leader.
+The Raft protocol \cite{raft} is used in the context of log replication, ensuring consensus on the order in which the operations contained in the log entries will be applied. Each entity involved in the protocol is called a \textit{peer}, and in any given instant a peer can have one of three roles: \textit{Follower}, \textit{Candidate} or \textit{Leader}.
 
-Each peer stores a term and a log. The term is used alongside the size of the log to keep track of how up-to-date each peer is. The base structure of the log can be seen in the figure below:
+Each peer stores a \textit{term} and a \textit{log}. The term is used alongside the size of the log to keep track of how up-to-date each peer is. The base structure of a log can be seen in the figure below:
 
 \todo{*figure showing the log and log entries’ structure*}
 
@@ -88,27 +88,27 @@ When a peer has the Follower role, it’s behavior is mostly based on the execut
 
 Upon receiving a client request, a Follower redirects that message to the current leader of the protocol.
 
-When a Candidate calls a RequestVote RPC on a Follower, the result will correspond to the Follower’s vote. This vote will be positive if the Candidate’s term and log entries are up-to-date, and the Follower hasn’t voted in favor of another candidate. Otherwise, the vote will be negative.
+When a Candidate calls a \texttt{RequestVote} RPC on a Follower, the result will correspond to the Follower’s vote. This vote will be positive if the Candidate’s term and log entries are up-to-date, and the Follower hasn’t voted in favor of another candidate. Otherwise, the vote will be negative.
 
-A Leader can execute AppendEntries RPCs on all Followers, not only to send them new log entries, but also to inform them that there is an active Leader. The execution of this RPC on a Follower will succeed if the sent log entries are successfully appended to the Follower’s log. The execution fails if the Follower is missing some previous log entries or if it detects that the Leader is outdated - if the Leader’s term is smaller than the Follower’s term. If the RPC’s execution succeeds, the Follower will also compare it’s commit index to the Leader’s, apply the newly committed operations, if there are any, and the RPC’s result will include the index of the last entry in the Follower’s log.
+A Leader can execute \texttt{AppendEntries} RPCs on all Followers, not only to send them new log entries, but also to inform them that there is an active Leader. The execution of this RPC on a Follower will succeed if the sent log entries are successfully appended to the Follower’s log. The execution fails if the Follower is missing some previous log entries or if it detects that the Leader is outdated - if the Leader’s term is smaller than the Follower’s term. If the RPC’s execution succeeds, the Follower will also compare it’s commit index to the Leader’s, apply the newly committed operations, if there are any, and the RPC’s result will include the index of the last entry in the Follower’s log.
 
-Finally, a Follower will change its role to Candidate when a heartbeat timeout occurs - when the Follower hasn’t received a message from the valid Leader recently.
-
-\vspace{0.5cm}
-
-When a peer changes its role to Candidate, the election process begins. The Candidate will increment its current term, and will execute RequestVote RPCs on every other peer.
-
-Upon receiving a negative result from a RequestVote RPC, the Candidate will check if that follower’s term is larger than his current term and if that is true, then the Candidate will revert its role back to Follower since there is another peer more up-to-date than him.
-
-If the Candidate receives a majority of positive results from the RequestVote RPCs, the Candidate will change its role to Leader.
+Finally, a Follower will change its role to Candidate when a \textit{heartbeat timeout} occurs - when the Follower hasn’t received a message from the valid Leader recently.
 
 \vspace{0.5cm}
 
-The Leader is in charge of executing AppendEntries RPCs on all peers periodically, regardless of whether or not there are new entries in its log, because these messages also serve the purpose of informing the peers that the Leader did not fail.
+When a peer changes its role to Candidate, the election process begins. The Candidate will increment its current term, and will execute \texttt{RequestVote} RPCs on every other peer.
 
-When an AppendEntries RPC is unsuccessful, the Leader will decrement the index of the next message that needs to be sent to that peer, to try and solve the conflict. Worst case scenario, the conflict is at the start of the log and therefore the request will only succeed when the Leader decrements the index to be sent to 0.
+Upon receiving a negative result from a \texttt{RequestVote} RPC, the Candidate will check if that follower’s term is larger than his current term and if that is true, then the Candidate will revert its role back to Follower since there is another peer more up-to-date than him.
 
-Every time an AppendEntries RPC is successful, the Leader will check what is the latest entry that it can commit, which will be the entry with the largest index that is replicated in the log of a majority of peers.
+If the Candidate receives a majority of positive results from the \texttt{RequestVote} RPCs, the Candidate will change its role to Leader.
+
+\vspace{0.5cm}
+
+The Leader is in charge of executing \texttt{AppendEntries} RPCs on all peers periodically, regardless of whether or not there are new entries in its log, because these messages also serve the purpose of informing the peers that the Leader did not fail.
+
+When an \texttt{AppendEntries} RPC is unsuccessful, the Leader will decrement the index of the next message that needs to be sent to that peer, to try and solve the conflict. Worst case scenario, the conflict is at the start of the log and therefore the request will only succeed when the Leader decrements the index to be sent to 0.
+
+Every time an \texttt{AppendEntries} RPC is successful, the Leader will check what is the latest entry that it can commit, which will be the entry with the largest index that is replicated in the log of a majority of peers.
 
 Upon receiving any message that contains a term larger than its own, the Leader will revert its role to Follower since that means there is another Leader more up-to-date.
 
@@ -116,7 +116,6 @@ Upon receiving any message that contains a term larger than its own, the Leader 
 
 The Raft protocol guarantees that peers will reach a consensus on the order of the entries in the log and execute those operations in the same order, however it does not guarantee that all client requests will be added to the log, as some might get lost during leader failures.
 
-\todo{*diagram with the role changes ? *}
 
 
 \subsection{Multi-Decree Paxos}
@@ -127,11 +126,11 @@ There are several papers that present somewhat different descriptions of Multi-D
 
 The state kept by each peer is very similar to the state kept in Single-Decree Paxos, with the addition of the log entries and the identity of the last known leader.
 
-At the start of the protocol, one peer is elected to act as the coordinator (also known as leader or distinguished proposer). This election can be done through one round of Single-Decree Paxos, where a peer generates a new sequence number and sends a PREPARE message to the remaining peers. If he receives a majority of valid PROMISES then he can start acting as the coordinator. Note that to ensure no out-of-date peers, the PREPARE message must include the peer’s log.
+At the start of the protocol, one peer is elected to act as the \textit{coordinator} (also known as \textit{leader} or \textit{distinguished proposer}). This election can be done through one round of Single-Decree Paxos, where a peer generates a new sequence number and sends a \texttt{PREPARE} message to the remaining peers. If he receives a majority of valid \texttt{PROMISES} then he can start acting as the coordinator. Note that to ensure no out-of-date peers, the \texttt{PREPARE} message must include the peer’s log.
 
-The coordinator can then receive requests from clients or from the other peers, selecting one of those entries to be broadcasted. This is the PROPOSE message sent in Single-Decree Paxos. This message will now also include the coordinator’s log, so that peers that failed in a previous iteration of the protocol may catch up to the current state of the system.
+The coordinator can then receive requests from clients or from the other peers, selecting one of those entries to be broadcasted. This is the \texttt{PROPOSE} message sent in Single-Decree Paxos. This message will now also include the coordinator’s log, so that peers that failed in a previous iteration of the protocol may catch up to the current state of the system.
 
-Once a majority of replicas acknowledge the coordinator - ACCEPT his proposal - consensus is reached, and the coordinator proceeds to send a COMMIT message to notify the replicas.
+Once a majority of replicas acknowledge the coordinator - \texttt{ACCEPT} his proposal - consensus is reached, and the coordinator proceeds to send a \texttt{COMMIT} message to notify the replicas.
 
 \vspace{0.5cm}
 
@@ -160,7 +159,7 @@ The object of the consensus is a chain of blocks, as depicted in figure x. Howev
 
 \vspace{0.5cm}
 
-There are two main types of blockchain networks, permissioned and permissionless.
+There are two main types of blockchain networks, \textit{permissioned} and \textit{permissionless}.
 
 A permissioned blockchain, also referred to as a private blockchain, is a closed network where only authorized nodes can join and participate in the blockchain protocol. This does however require a centralized authority that regulates who can join the network. An example of a permissioned blockchain is Hyperledger Fabric \cite{hyperledger_fabric}.
 
@@ -334,9 +333,8 @@ Nodes receive a reward upon creating a block that gets successfully added to the
 
 Ethereum \cite{ethereum_whitepaper} \cite{ethereum_yellowpaper} is a permissionless blockchain network that manages a cryptocurrency, ether, and supports a built-in Turing-complete programming language that users can leverage to create smart contracts and decentralized applications that can specify state transition functions. The execution of these pieces of code can be triggered by messages and transactions.
 
-The following is a description, divided according to the five component framework \cite{survey_bchain_networks}, of the protocol executed in the Ethereum network \cite{ethereum_whitepaper} \cite{ethereum_yellowpaper}. For clarification, this is a description of the Ethereum 1 protocol. An overview of the key functionalities introduced by the currently deployed version of Ethereum 2 [x] will be presented afterwards.
+The following is a description, divided according to the five component framework \cite{survey_bchain_networks}, of the protocol executed in the Ethereum network \cite{ethereum_whitepaper} \cite{ethereum_yellowpaper}. For clarification, this is a description of the Ethereum 1 protocol. An overview of the key functionalities introduced by the currently deployed version of Ethereum 2 \cite{eth2} will be presented afterwards.
 
-\todo{add ethereum2 citation}
 
 \vspace{0.5cm}
 
