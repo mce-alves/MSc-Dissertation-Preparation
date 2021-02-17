@@ -11,21 +11,11 @@
 \chapter{Introduction}
 \label{cha:introduction}
 
-%% You may define new commands in the main text.  These commands will 
-%% be valid from this point until the end of the document.
- 
-
-% epigraph configuration
-% \epigraphfontsize{\small\itshape}
-% \setlength\epigraphwidth{12.5cm}
-% \setlength\epigraphrule{0pt}
-% 
-% \epigraph{
-%   This work is licensed under the \href{LaTeX project public license}{\LaTeX\ Project Public License v1.3c}.
-%   To view a copy of this license, visit \url{LaTeX project public license}.
-% }
+Consensus protocols are notoriously difficult to understand and even harder to define correctly. In the context of blockchain systems, mastering their dynamical behaviour and trust in their correctness is crucial, since the protocols control financial transactions. Moreover, understanding them is essential to enable evolution.
 
 \section{Context}
+
+\todo{not sure how to begin this subsection}
 
 \begin{itemize}
   \item brief overview of what blockchain is and why it is relevant
@@ -37,30 +27,33 @@
 
 \section{Problem}
 
-\begin{itemize}
-  \item dividing blockchain protocols into essential components, to better abstract and extract their commonalities and key differences
-  \item the need for blockchain simulation
-  \begin{itemize}
-    \item a blockchain protocol is composed of several underlying components/algorithms, and each of which may have several parameters that can influence the performance and execution of the overall system. It is therefore important to be able to reason about the choice of these parameters before deploying to production
-    \item finding the fundamental aspects and the best building blocks to structure the presentation of the protocols (at the right level of abstraction, to allow reusability) and develop an extensible blockchain simulator
-  \end{itemize}
-\end{itemize}
+Consensus protocols have crucial roles among distributed systems, such as blockchain technologies. However, there is a lack of specification and experimentation environments to develop consensus and blockchain protocols and thus study their behaviour.
 
+Blockchain protocols are composed of several underlying components, or algorithms, and each of which may have several parameters that can influence the performance and execution of the overall protocol. It is therefore important to be able to reason about the choice of these parameters before deploying the protocol to a real environment.
+
+Hence, there is a need to divide blockchain protocols into essential components, to achieve better abstraction between different protocols, and extract their similarities and key differences. These components can then be used as building blocks to structure the presentation and implementation of the protocols, enhancing their readability and code reusability, and thus enabling the development of an extensible simulation environment.
 
 
 
 \section{Goal}
 
+The goal of this project is to develop a simulation environment that allows researchers to make informed decisions about the effects of different parameterizations of the underlying components involved in blockchain protocols.
+
+The simulation environment should be:
+
 \begin{itemize}
-  \item modular and extensible blockchain simulator, providing the ability to make changes to protocols, and the ability to simulate different families of protocols
-  \item ability to parameterize the different components (underlying algorithms) of the protocols
-  \item structured according to the 5-component framework presented in (Survey Of Distributed Consensus Protocols for Blockchain Networks)
-  \item ability to perform some level of validation/evaluation on the simulator’s results?
-  \item study the evolution of the protocols when adjusting different parameters (the goal is not to accurately simulate a real system, but rather to support decisions with respect to new versions/protocols)
-  \item the intended simulator should provide a qualitative evaluation of the protocol, rather than evaluate its efficiency
-  \item should provide researchers results that allow them to reason about certain implementation details
-  \begin{itemize}
-    \item how many adversaries are supported
-    \item “fairness” when handling stakeholders with different weights
-  \end{itemize}
+  \item modular and extensible, providing the ability to make changes to the protocols, and simulate different families of protocols.
+  \item parameterizable, to allow researchers to learn the effects of different parameters in the overall behaviour of the protocol.
+  \item structured according to an abstraction framework, such as the five component framework presented in \textit{"Survey Of Distributed Consensus Protocols for Blockchain Networks"} \cite{survey_bchain_networks}, enabling modularity, code reusability and readability.
+  \item focused on providing a qualitative evaluation of the simulated protocols.
 \end{itemize}
+
+The goal is \textbf{not} to simulate the protocol's behaviour when compared to reality as a mean for it's testing efficiency, but rather to provide researchers results that allow them to reason about certain implementation details, such as: How many adversaries does the system support? Is the system fair when handling stakeholders with different stakes?
+
+
+
+
+
+\todo{evaluation $/$ validation?}
+
+\todo{mention the DSL "companion" project here?}
