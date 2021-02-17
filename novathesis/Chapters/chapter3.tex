@@ -72,7 +72,18 @@ The Coordinator is essential for providing scalability and speed. This is done b
 \section{Critical Analysis}
 \label{sec:critical_analysis}
 
-\todo{insert the table with the properties of each simulator}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+					& \begin{tabular}[c]{@{}c@{}}Adversarial\\ Behaviour\end{tabular} & \begin{tabular}[c]{@{}c@{}}Abstraction\\ Layers\end{tabular}                                                                                                 & \begin{tabular}[c]{@{}c@{}}Proof\\ of\\ Stake\end{tabular} & \begin{tabular}[c]{@{}c@{}}Proof\\ of\\ Work\end{tabular}     \\ \hline
+VIBES \cite{vibes}    & not modeled                                                     & none                                                                                                                                                         & not modeled                                                & bitcoin                                                       \\ \hline
+BlockSim \cite{blocksim1} & not modeled                                                     & \begin{tabular}[c]{@{}c@{}}node layer\\ consensus layer\\ ledger layer\\ transaction layer\\ block layers\\ network layer\\ cryptographic layer\end{tabular} & not modeled                                                & \begin{tabular}[c]{@{}c@{}}bitcoin\\ \\ ethereum\end{tabular} \\ \hline
+BlockSim \cite{blocksim2} & not modeled                                                     & \begin{tabular}[c]{@{}c@{}}network layer\\ consensus layer\\ incentives layer\end{tabular}                                                                   & not modeled                                                & \begin{tabular}[c]{@{}c@{}}bitcoin\\ \\ ethereum\end{tabular} \\ \hline
+\end{tabular}
+\caption{Overview of the provided functionalities of the existing simulators, in regard to properties we consider relevant. If adversarial behaviour is modeled, what are the adopted abstraction layers for extending the simulator to other protocols, and what proof of stake and proof of work protocols have been modeled.}
+\end{table}
 
 VIBES \cite{vibes} is scalable, fast, and is capable of being extended to blockchain protocols other than bitcoin, although requiring some changes to be made to the simulation engine \cite{evibes}. However, it does not follow any abstraction mechanisms to specify the protocols to be simulated, which would increase it’s extensibility.
 
