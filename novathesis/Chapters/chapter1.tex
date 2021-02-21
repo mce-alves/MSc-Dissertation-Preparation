@@ -11,33 +11,44 @@
 \chapter{Introduction}
 \label{cha:introduction}
 
-Consensus protocols are notoriously difficult to understand and even harder to define correctly. In the context of blockchain systems, mastering their dynamical behaviour and trust in their correctness is crucial, since the protocols control financial transactions. Moreover, understanding them is essential to enable evolution.
+% epigraph configuration
+\epigraphfontsize{\small\itshape}
+\setlength\epigraphwidth{12.5cm}
+\setlength\epigraphrule{0pt}
+
+\epigraph{
+  This work is licensed under the \href{LaTeX project public license}{\LaTeX\ Project Public License v1.3c}.
+  To view a copy of this license, visit \url{LaTeX project public license}.
+}
 
 \section{Context}
 
-\todo{not sure how to begin this subsection}
+Consensus protocols have crucial roles among distributed systems, such as blockchain technologies. They enable coordination between multiple machines, allowing them to maintain a replicated state and are therefore crucial in building reliable, large-scale distributed systems.
 
-\begin{itemize}
-  \item brief overview of what blockchain is and why it is relevant
-  \item different aspects involved in developing blockchain technologies
-  \item current challenges (verification, validation, simulation, DSLs for clear and concise presentation of the protocols)
-\end{itemize}
+Blockchain protocols are a composition of steps executed by each node in a network to maintain a distributed ledger among multiple nodes, and also enables the development of smart contracts.
 
+These blockchain protocols possess several underlying components, or algorithms, and each of which may have several parameters that can influence the performance and behavior of the overall protocol. It is therefore important to be able to reason about the choice of these parameters before deploying the protocol to a real environment.
+
+In recent years, blockchain technologies have been rising in popularity leading to the emergence of several different protocols, algorithms and parameterizations. Hence, there is a need to divide blockchain protocols into essential components, to achieve better abstraction between different protocols, and extract their similarities and key differences. These components can then be used as building blocks to structure the presentation and implementation of the protocols, enhancing their readability and code reusability, and thus enabling the development of an extensible simulation environment.
+
+Chapter \ref{cha:background} will present consensus and blockchain protocols in further detail.
 
 
 \section{Problem}
 
-Consensus protocols have crucial roles among distributed systems, such as blockchain technologies. However, there is a lack of specification and experimentation environments to develop consensus and blockchain protocols and thus study their behaviour.
+Consensus protocols are notoriously difficult to understand and even harder to define correctly. In the context of blockchain systems, mastering their dynamical behaviour and trust in their correctness is crucial, since the protocols control financial transactions. Moreover, understanding them is essential to enable evolution. However,
 
-Blockchain protocols are composed of several underlying components, or algorithms, and each of which may have several parameters that can influence the performance and execution of the overall protocol. It is therefore important to be able to reason about the choice of these parameters before deploying the protocol to a real environment.
+\begin{center}
+  \emph{there is a lack of specification and experimentation environments to develop consensus and blockchain protocols and thus study their behaviour}
+\end{center}
 
-Hence, there is a need to divide blockchain protocols into essential components, to achieve better abstraction between different protocols, and extract their similarities and key differences. These components can then be used as building blocks to structure the presentation and implementation of the protocols, enhancing their readability and code reusability, and thus enabling the development of an extensible simulation environment.
+\noindent which is the problem this thesis aims to address.
 
 
 
 \section{Goal}
 
-The goal of this project is to develop a simulation environment that allows researchers to make informed decisions about the effects of different parameterizations of the underlying components involved in blockchain protocols.
+The goal of this thesis is to develop a simulation environment that allows researchers to make informed decisions about the effects of different parameterizations of the underlying components involved in blockchain protocols.
 
 The simulation environment should be:
 
@@ -48,12 +59,10 @@ The simulation environment should be:
   \item focused on providing a qualitative evaluation of the simulated protocols.
 \end{itemize}
 
-The goal is \textbf{not} to simulate the protocol's behaviour when compared to reality as a mean for it's testing efficiency, but rather to provide researchers results that allow them to reason about certain implementation details, such as: How many adversaries does the system support? Is the system fair when handling stakeholders with different stakes?
+The goal is \textbf{not} to simulate the protocol's behaviour when compared to reality as a mean fo testing it's efficiency, but rather to provide researchers results that allow them to reason about certain properties of the implementations, such as: How many adversaries does the system support? Is the system fair when handling stakeholders with different stakes?
 
 
+This thesis is being developed in the context of NOVA LINCS research unit, in parallel with two other projects which aim to supply researchers with tools that facilitate the empirical analysis of blockchain protocols.
 
+The other projects consist in producing a DSL (Domain Specific Language) for specifying these protocols, which could then be compiled and executed in the simulator and also compiled to another environment where formal proofing will be executed.
 
-
-\todo{evaluation $/$ validation?}
-
-\todo{mention the DSL "companion" project here?}
