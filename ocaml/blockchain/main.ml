@@ -1,11 +1,11 @@
-open Node;;
+open Network;;
 
 module type Proposal = sig
   type transaction
   type block
   type proof
   (* generate a block, attaching the necessary proof object *)
-  val propose_block : (transaction list) ->int ->(bool * ((block * proof) option))
+  val propose_block : (transaction list) ->((block * proof) option)
 end
 
 module type Validation = sig
@@ -19,8 +19,9 @@ end
 module type Propagation = sig
   type block
   type proof
+  type communication_channels
   (* disseminate a block (and proof) accross the network *)
-  val propagate_block : (block * proof) ->unit
+  val propagate_block : (block * proof) ->(communication_channels list) ->unit
 end
 
 module type Finalization = sig
@@ -51,27 +52,31 @@ module Main
   (BlockPropagation : Propagation with type block = BlockProposal.block and type proof = BlockProposal.proof)
   (BlockFinalization : Finalization with type block = BlockProposal.block and type blocktree = BlockValidation.blocktree)
   (IncentiveMechanism : Incentive)
-  (N : Node with type block = BlockProposal.block and type proof = BlockProposal.proof and type blocktree = BlockFinalization.blocktree)
-  (CheckpointFinalization : Checkpoint with type blocktree = N.blocktree) = struct
+  (NetworkOperations : Network with type block = BlockProposal.block and type transaction = BlockProposal.transaction and type proof = BlockProposal.proof)
+  (CheckpointFinalization : Checkpoint with type blocktree = BlockValidation.blocktree) = struct
 
-  let run bc txs checkpointTree = begin
-    let tmpBlockSet : (N.block list ref) = ref [] in
+  let run bc txs checkpointTree receiveChannel networkChannels = begin
+    let tmpBlockSet : (BlockProposal.block list ref) = ref [] in
     let rec main () =
-      match (BlockProposal.propose_block txs 0) with
-        | (true, Some (blk, proof)) ->
+      match (BlockProposal.propose_block !txs) with
+        | Some (blk, proof) ->
           tmpBlockSet := blk::!tmpBlockSet;
-          BlockPropagation.propagate_block (blk, proof)
-        | (_, _) -> ();
-      match (N.receive_block ()) with
-        | (true, Some (blk, proof)) ->
+          BlockPropagation.propagate_block (blk, proof) networkChannels
+        | None -> ();
+      match (NetworkOperations.receive_transaction receiveChannel) with
+        | Some tx ->
+          txs := tx::!txs
+        | None -> ();
+      match (NetworkOperations.receive_block receiveChannel) with
+        | Some (blk, proof) ->
           begin
             match (BlockValidation.validate_block (blk, proof) !bc) with
             | true ->
               tmpBlockSet := blk::!tmpBlockSet;
-              BlockPropagation.propagate_block (blk, proof)
+              BlockPropagation.propagate_block (blk, proof) networkChannels
             | false -> ()
           end
-        | (_, _) -> ();
+        | None -> ();
       bc := BlockFinalization.finalize_block !tmpBlockSet !bc;
       checkpointTree := CheckpointFinalization.finalize_checkpoint !bc !checkpointTree;
       main () in

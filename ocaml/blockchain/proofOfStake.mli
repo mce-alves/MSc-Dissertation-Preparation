@@ -41,12 +41,10 @@ module type ProofOfStake = sig
   val create_checkpoint_vote : blocktree ->blocktree ->user ->round ->vote
   (* cheks if a vote is valid -> compare against slashing rules *)
   val validate_vote : blocktree ->vote ->bool
-  (* attemps to receive a checkpoint vote, if there are any votes to receive *)
-  val receive_checkpoint_vote : unit ->(vote option)
   (* process a received vote, and store it if it is valid (also store the block in the tree, if it isn't there yet) *)
   val process_checkpoint_vote : blocktree ->vote ->(vote list) ->((vote list) * blocktree)
   (* given the list of received votes, produces the pair (source block * target block) *)
   (* representing the achieved majority link, if it exists *)
-  (* upon success, the source block can be marked as finalized, and the target as justified *)
-  val process_votes : blocktree ->(vote list) -> ((hash * hash) option)
+  (* upon success, the source block can be marked as finalized, and the target as justified, updating the checkpoint tree *)
+  val process_votes : blocktree ->(vote list) -> (((hash * hash) option) * blocktree)
 end

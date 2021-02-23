@@ -1,5 +1,3 @@
-open Proposal;;
-
 module type ProofOfWork = sig
   (* the type of the block's implementation *)
   type block
