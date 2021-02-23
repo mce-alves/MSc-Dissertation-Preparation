@@ -11,12 +11,308 @@
 \chapter{Use Cases}
 \label{cha:use_cases}
 
+This chapter will introduce the work done in preparation for the thesis.
+
+\section{Consensus Protocols in Rust}
+
+Single-Decree Paxos \cite{paxos_made_simple}, Raft \cite{raft} \cite{paxos_vs_raft} and Multi-Decree Paxos \cite{paxos_live} \cite{paxos_vs_raft} were implemented in Rust, with the goal of achieving a better understanding of consensus protocols and what is required to transform their pseudo-code descriptions into working implementations, as well as extracting similarities from the implementations of the different protocols. These toy implementations can be accessed at the Github repository \cite{my_github}.
+
+The three implementations possess the same foundation:
+
 \begin{enumerate}
-    \item paxos and raft in rust 
-    \item explain why ocaml was the language of choice, as opposed to Rust 
-    \item modularizing blockchain protocols
-    \begin{itemize}
-        \item nakamoto, algorand and ethereum
-        \item maybe include code-snippets, for example, of the top-level modular function
-    \end{itemize}
+  \item Each node is simulated by one thread, and nodes are able to communicate with eachother via Rust's \texttt{mpsc} crate \cite{mpsc_rust}.
+  \item Artificial delays were added to some operations, such as sending a message.
+  \item Messages can be "lost", therefore some nodes never received them.
+  \item Nodes can temporarily fail. During that period of time, they do not receive nor respond to any messages.
+  \item Membership is static. There is no notion of membership management as nodes do not leave the network, neither do new nodes join it.
+  \item The execution of the protocols produce verbose output files to aid in understanding the behavior and progress of the protocols.
 \end{enumerate}
+
+
+\subsection{Single-Decree Paxos}
+
+The implementation of the Single-Decree Paxos protocol following its description \cite{paxos_made_simple} was straightforward, however the resulting implementation has over 500 lines of code, whereas the protocol is usually presented in less than one page of pseudo-code. Most of this overhead is due to having to define the structure of every message sent during the protocol's execution, defining the operations to send, receive and validate each message, and defining error handling and logging operations.
+
+\vspace{0.2cm}
+
+The main aspect of the protocol that must be highlighted is the fact that different peers must use different proposal numbers, otherwise the \textit{Agreement} property, mentioned in Chapter \ref{cha:background}, would not be ensured. In the toy implementation, a simple solution was achieved using floating point proposal numbers. Each peer starts with a proposal number, where the fractional part of the number is equal to its peer identifier and the peer simply increments this number by 1 as needed.
+
+Another possible solution would be for peers to increment the proposal number multiple times, and only use a proposal number \textbf{i} if \textbf{i \% n = p}, where \textbf{n} is the total number of peers in the network and \textbf{p} is the peer's identifier. 
+
+
+
+
+\subsection{Comparison between Multi-Decree Paxos and Raft}
+
+The implementation of the Raft protocol resulted from an almost direct translation of the protocol's pseudo-code \cite{raft} and \textit{TLA+} specification \cite{raft_tla}.
+
+The main difference between the implementation and the original paper \cite{raft} is that communication between peers was done through \textit{message-passing} instead of \textit{remote procedure calls}. This decision was done with the purpose of reusing the \textit{message-passing} code from the Single-Decree Paxos implementation, as well as reusing its overall project structure.
+
+\vspace{0.2cm}
+
+As highlighted in Chapter \ref{cha:background}, the Single-Decree Paxos protocol achieves consensus on a single value, whereas Raft and Multi-Decree Paxos are used to maintain a replicated log. Because of this difference, finding similarities between Raft and Single-Decree Paxos proved difficult, as the main similarities weren't specific to the protocols themselves, but rather specific to how the implementations were structured and how messages were exchanged.
+
+So with the implementation of Multi-Decree Paxos, the main goal was to reuse as much code as possible from the Raft implementation. To this end, the paper \textit{"Paxos vs Raft: Have we reached consensus on distributed consensus?"} \cite{paxos_vs_raft} was used as reference, since the authors presented the Multi-Decree Paxos protocol using Raft's terminology, making it easier to reason about the similarities between them. For example, proposal numbers are the equivalent to Raft's terms and the distinguished proposer is equivalent to Raft's leader.
+
+The key differences between the protocols are related to leader election and how log entries are committed. These differences are summarized bellow, as highlighted in the paper \cite{paxos_vs_raft}:
+
+\begin{enumerate}
+  \item How does the protocol ensure that each term has at most one leader?
+  \begin{enumerate}
+    \item \texttt{Raft} $\xrightarrow{}$ a follower can become a candidate in any term. Each follower will only vote for a single candidate per term, therefore only one candidate will receive a majority of votes and thus become the leader.
+    \item \texttt{Multi-Decree Paxos} $\xrightarrow{}$ a peer \textbf{p} can only become a candidate in term \textbf{t} if \textbf{t \% n = p}, where \textbf{n} is the total number of peers in the network. This means that there will only be one candidate per term, and therefore there will only be one leader per term.
+  \end{enumerate}
+  \item How does the protocol ensure that a new leader's log contains all committed log entries?
+  \begin{enumerate}
+    \item \texttt{Raft} $\xrightarrow{}$ a follower votes for a candidate only if the candidate's log is at least as up-to-date as the follower's log.
+    \item \texttt{Multi-Decree Paxos} $\xrightarrow{}$ each vote from a follower to a candidate also includes the follower's log entries. Upon receiving a majority of votes, the candidate will merge the entries with the highest term to its own log.
+  \end{enumerate}
+  \item How does the protocol ensure that the leaders safely commit log entries from previous terms?
+  \begin{enumerate}
+    \item \texttt{Raft} $\xrightarrow{}$ the leader replicates the old uncommitted log entries to the other peers without changing them, but these entries will only be committed when the leader commits at least one entry from its current term.
+    \item \texttt{Multi-Decree Paxos} $\xrightarrow{}$ uncommitted log entries from previous terms are added to the leader's log with the leader's new term. The leader then replicates these entries as if they were added in his term.
+  \end{enumerate}
+\end{enumerate}
+
+These differences translate to roughly 250 non-reusable lines of code for each protocol, and close to 400 lines of code that are common to both protocols.
+
+\vspace{0.2cm}
+
+The section of Multi-Decree Paxos that may require further explanation is how the logs are merged when a leader is elected. As mentioned, each peer keeps track of the last entry that has been committed, and when voting for a candidate the peers will include their log in the vote message.
+
+Upon being elected, the leader will then merge these logs with its own. Already committed entries will not change, however each index after the last committed entry will contain the log entry with the highest term that is included in the log of a peer at that same index - in summary, each index will contain the most up-to-date log entry among the logs of all peers in the network.
+
+After the logs have been merged, the term of all uncommitted entries will be updated to the leader's current term.
+
+
+
+
+
+\section{Blockchain Protocols in OCaml}
+
+To begin defining the abstractions for the blockchain protocols that will be simulated, the signatures of high-level functions used in the different components of Bitcoin, Ethereum and Algorand were defined, as well as a template for a modular main function that can be used by the three protocols.
+
+OCaml is the language of choice because it provides the right amount of abstraction we require, however there are some questions regarding whether or not the language's multithreading capabilities will be able to satisfy our needs.
+
+In the following sections, we will present the signatures of essential functions in the Bitcoin, Algorand and Ethereum protocols, the reusable module based top-level function and the intended usage for this function.
+
+\subsection{Function Signatures}
+
+The function signatures are divided into modules, and the types used in the signatures are defined as abstract types in those same modules. This was a design choice for this phase, as it improves the readability of the signatures.
+
+\vspace{0.2cm}
+
+First, the essential operations involved in proof of work were identified, based mainly on the Bitcoin \cite{bitcoin} and Ethereum \cite{ethereum_whitepaper} protocols, producing the following signatures:
+
+\begin{itemize}
+    \itemsep0em
+    \item \texttt{val init\_nonce : nonce}
+      \begin{description}
+        \item returns the initial \textit{nonce} to be used when mining.
+      \end{description}
+    \item \texttt{val next\_nonce : nonce $\rightarrow{}$nonce}
+      \begin{description}
+        \item receives a \textit{nonce} and returns the next one to be used.
+      \end{description}
+    \item \texttt{val compute\_hash : block $\rightarrow{}$nonce $\rightarrow{}$hash}
+      \begin{description}
+        \item receives a \textit{block} and a \textit{nonce} and returns the resulting \textit{hash}.
+      \end{description}
+    \item \texttt{val acceptance\_function : hash $\rightarrow{}$threshold $\rightarrow{}$bool}
+      \begin{description}
+        \item validates whether or not a \textit{hash} is valid, when compared to a \textit{threshold} defined by the hash difficulty.
+      \end{description}
+\end{itemize}
+
+
+The process was then repeated for proof of stake, mostly based on the Algorand \cite{algorand_scale_byz_agreements} protocol:
+
+\begin{itemize}
+    \itemsep0em
+    \item \texttt{val weights : stakes}
+      \begin{description}
+        \item returns the users and their corresponding initial weights, or \textit{stakes}.
+      \end{description}
+    \item \texttt{val committee\_sortition:key $\rightarrow{}$round $\rightarrow{}$step $\rightarrow{}$((hash * proof) option)}
+      \begin{description}
+        \item given a peer's \textit{private} key, a round and a step in the protocol, returns the credentials for that peer (the \textit{hash} and \textit{proof} pair produced by a verifiable random function \cite{algorand_scale_byz_agreements}), if it was selected to belong to the committee for that round and step in the protocol.
+      \end{description}
+    \item \texttt{val proposer\_sortition : key $\rightarrow{}$round $\rightarrow{}$((hash * proof) option)}
+      \begin{description}
+        \item given a peer's \textit{private} key and a round in the protocol, returns the credentials for that peer (the \textit{hash} and \textit{proof} pair produced by a verifiable random function \cite{algorand_scale_byz_agreements}), if it was selected to propose a block in that round.
+      \end{description}
+    \item \texttt{val committee\_validation:key $\rightarrow{}$round $\rightarrow{}$step $\rightarrow{}$(hash * proof) $\rightarrow{}$bool}
+      \begin{description}
+        \item given a peer's \textit{public} key, a round and step in the protocol, and credentials, returns whether or not the credentials are valid and belong to the owner of the specified \textit{public} key.
+      \end{description}
+      \item \texttt{val proposer\_validation: key $\rightarrow{}$round $\rightarrow{}$(hash * proof) $\rightarrow{}$bool}
+      \begin{description}
+        \item given a peer's \textit{public} key, a round in the protocol, and credentials, returns whether or not the credentials are valid and belong to the owner of the specified \textit{public} key.
+      \end{description}
+\end{itemize}
+
+
+Then, several essential function were identified for the \textit{blocktree} data structure maintained by each peer:
+
+\begin{itemize}
+    \item \texttt{val genesis : block}
+      \begin{description}
+        \item returns the genesis block. All chains will build on top of this block.
+      \end{description}
+    \item \texttt{val init : blocktree}
+      \begin{description}
+        \item returns the initial \textit{blocktree} datastructure, containing only the genesis block.
+      \end{description} 
+    \item \texttt{val write\_block : block $\rightarrow{}$blocktree $\rightarrow{}$blocktree}
+      \begin{description}
+        \item adds a new block to the \textit{blocktree}, returning the resulting \textit{blocktree}.
+      \end{description}
+    \item \texttt{val get\_best\_chain\_head : blocktree $\rightarrow{}$block}
+      \begin{description}
+        \item returns the head of the best (heaviest) chain in the \textit{blocktree}.
+      \end{description}
+    \item \texttt{val get\_best\_chain : blocktree $\rightarrow{}$(block list)}
+      \begin{description}
+        \item returns the best (heaviest) chain in the \textit{blocktree}.
+      \end{description}
+    \item \texttt{val fork\_choice\_rule : blocktree $\rightarrow{}$block $\rightarrow{}$block $\rightarrow{}$block}
+      \begin{description}
+        \item given the \textit{blocktree} and two distinct blocks, returns the block that belongs to the heaviest chain.
+      \end{description} 
+    \item \texttt{val no\_cycles : blocktree $\rightarrow{}$block $\rightarrow{}$bool}
+      \begin{description}
+        \item given a \textit{blocktree} and a block, returns whether adding that block to the tree would create a cycle.
+      \end{description}
+    \item \texttt{val contains\_hash : blocktree $\rightarrow{}$hash $\rightarrow{}$bool}
+      \begin{description}
+        \item checks if a \textit{blocktree} already contains a block with the specified hash.
+      \end{description} 
+\end{itemize}
+
+Finally, the same was done for relevant network operations:
+
+\begin{itemize}
+  \item \texttt{val min\_delay : float}
+    \begin{description}
+      \item the minimum delay that occurs when sending a message.
+    \end{description}
+  \item \texttt{val max\_delay : float}
+    \begin{description}
+      \item the maximum delay that can occur when sending a message.
+    \end{description}
+  \item \texttt{val fail\_chance : float}
+    \begin{description}
+      \item the chance for a message to not reach its destination.
+    \end{description}
+  \item \texttt{val send\_message : message $\rightarrow{}$(communication\_channels list) $\rightarrow{}$unit}
+    \begin{description}
+      \item sends a message to the nodes that own the communication channels present in the list.
+    \end{description}
+  \item \texttt{val receive\_transaction:communication\_channels $\rightarrow{}$(transaction option)}
+    \begin{description}
+      \item check the communication channel to see if there is a new transaction to be received.
+    \end{description}
+  \item \texttt{val receive\_block:communication\_channels $\rightarrow{}$((block * proof) option)}
+    \begin{description}
+      \item check the communication channel to see if there is a new block and associated proof to be received.
+    \end{description}
+\end{itemize}
+
+It is worth delving deeper into the intended usage of the communication channels. The \texttt{communication\_channels} type should be a set of multiple message channels, one for each type of message being exchanged in the network - one can expect, at the very least, one channel for blocks and another for transactions. The receive operations will then check the respective channel for new messages, and the \texttt{send\_message} operation can receive as an argument any message type, and through pattern matching the correct communication channel will be used.
+
+The implementation of these communication channels could leverage, for example, \textit{camlboxes} from the \textit{Netcamlbox} module provided in the \textit{Ocamlnet} package \cite{ocamlnet}. \textit{Camlboxes} provide an inter-process communication mechanism through what are essentially mailboxes, supporting a \textit{multiple producer and single consumer} scenario.
+
+
+
+
+
+
+
+
+
+\subsection{Modular Main Function}
+
+Using the paper \textit{"A Survey of Distributed Consensus Protocols for Blockchain Networks"} \cite{survey_bchain_networks} as reference, the \textit{functor} presented in Listing \ref{lst:main} was defined.
+
+In OCaml, \textit{functors} are functions that receive one or more modules as input arguments, and produce a new module as output. In this scenario, it allows us to define a single top-level function that can be used in all protocols by using different combinations of input modules, which we defined as being the modules that directly map the behavior of a protocol according to the five component framework.
+
+\lstset{language=caml, keywordstyle=\color{blue}, caption=Main Functor, label=lst:main}
+\begin{lstlisting}
+module Main
+  (BlockProposal : Proposal)
+  (BlockValidation : Validation with type block = BlockProposal.block and type proof = BlockProposal.proof)
+  (BlockPropagation : Propagation with type block = BlockProposal.block and type proof = BlockProposal.proof)
+  (BlockFinalization : Finalization with type block = BlockProposal.block and type blocktree = BlockValidation.blocktree and type transaction = BlockProposal.transaction)
+  (IncentiveMechanism : Incentive)
+  (NetworkOperations : Network with type block = BlockProposal.block and type transaction = BlockProposal.transaction and type proof = BlockProposal.proof)
+  (CheckpointFinalization : Checkpoint with type blocktree = BlockValidation.blocktree) = struct
+
+  let run bc txs checkpointTree receiveChannel networkChannels = begin
+    let tmpBlockSet : (BlockProposal.block list ref) = ref [] in
+    let rec main () =
+      match (BlockProposal.propose_block txs) with
+        | Some (blk, proof) ->
+          tmpBlockSet := blk::!tmpBlockSet;
+          BlockPropagation.propagate_block (blk, proof) networkChannels
+        | None -> ();
+      match (NetworkOperations.receive_transaction receiveChannel) with
+        | Some tx ->
+          txs := tx::!txs
+        | None -> ();
+      match (NetworkOperations.receive_block receiveChannel) with
+        | Some (blk, proof) ->
+          begin
+            match (BlockValidation.validate_block (blk, proof) !bc) with
+            | true ->
+              tmpBlockSet := blk::!tmpBlockSet;
+              BlockPropagation.propagate_block (blk, proof) networkChannels
+            | false -> ()
+          end
+        | None -> ();
+      bc := BlockFinalization.finalize_block tmpBlockSet !bc txs;
+      checkpointTree := CheckpointFinalization.finalize_checkpoint !bc !checkpointTree;
+      main () in
+    main ()
+  end
+
+end
+\end{lstlisting}
+
+The arguments of the \textit{run} function are the state stored by each node. For now, that state is the following:
+
+\begin{enumerate}
+  \item \texttt{bc} - a reference to a blockchain or blocktree data structure.
+  \item \texttt{txs} - a reference to a set of transactions, where the node will store the transactions that haven't yet been included in a block.
+  \item \texttt{checkPointTree} - a reference to the checkpoint tree data structure.
+  \item \texttt{receiveChannel} - the communication channels that the node can use to receive messages.
+  \item \texttt{networkChannels} - the communication channels of the known peers, to whom the node can send messages to.
+\end{enumerate}
+
+The recursive \textit{main} function is the main loop executed by each peer in the network.
+
+It starts by running one iteration of it's block proposal mechanism (lines 13-17). If that iteration succeeds, it must produce a block and an associated proof. The block gets added to the set of temporary blocks, and the \texttt{(block, proof)} pair is propagated to the peers.
+
+Next, it attempts to receive a transaction (lines 18-21), if there is one to be received, and adds it to the set of transactions.
+
+It then attempts to receive a block, if there is one to receive, and proceeds to validate it (lines 22-31). If the block is valid, it gets added to the set of temporary blocks and propagated to the peers.
+
+Finally, it executes block finalization (line 32) which receives the blocktree and the set of temporary blocks, and returns an updated blocktree.
+
+A similar procedure is done for checkpoint finalization (line 33), which receives a blocktree and a checkpoint tree, and produces an updated checkpoint tree.
+
+\vspace{0.75cm}
+
+Note that this \textit{functor} is a good foundation, however it must be further developed. At the moment it has some limitations, such as:
+
+\begin{enumerate}
+    \item some parameters must be abstracted as different protocols may receive different inputs. For example, the \texttt{propose\_block} operation must receive a \textit{nonce} in proof of work, and a \textit{round} in proof of stake. A possible solution might be including an abstract type that will contain the necessary arguments for each operation, and store those arguments in the node's state.
+    \item transactions and blocks could be received continuously, until there are none left in the channels to be received.
+    \item the incentive mechanism module is currently not being used.
+\end{enumerate}
+
+
+
+\vspace{0.2cm}
+
+As mentioned, to use the presented \textit{functor}, one must implement the required input modules, which were defined according to the Five Component Framework. The Five Component Framework was presented in more detail in Chapter \ref{cha:background}, as well as an explanation of what each of the five components does in the Bitcoin, Algorand and Ethereum protocols.
+
