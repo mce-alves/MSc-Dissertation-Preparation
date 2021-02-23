@@ -5,7 +5,7 @@ module type Proposal = sig
   type block
   type proof
   (* generate a block, attaching the necessary proof object *)
-  val propose_block : (transaction list) ->((block * proof) option)
+  val propose_block : (transaction list ref) ->((block * proof) option)
 end
 
 module type Validation = sig
@@ -27,8 +27,9 @@ end
 module type Finalization = sig
   type block
   type blocktree
+  type transaction
   (* agree on the acceptance of validated block *)
-  val finalize_block : (block list) ->blocktree ->blocktree
+  val finalize_block : (block list ref) ->blocktree ->(transaction list ref) ->blocktree
 end
 
 module type Incentive = sig
@@ -50,7 +51,7 @@ module Main
   (BlockProposal : Proposal)
   (BlockValidation : Validation with type block = BlockProposal.block and type proof = BlockProposal.proof)
   (BlockPropagation : Propagation with type block = BlockProposal.block and type proof = BlockProposal.proof)
-  (BlockFinalization : Finalization with type block = BlockProposal.block and type blocktree = BlockValidation.blocktree)
+  (BlockFinalization : Finalization with type block = BlockProposal.block and type blocktree = BlockValidation.blocktree and type transaction = BlockProposal.transaction)
   (IncentiveMechanism : Incentive)
   (NetworkOperations : Network with type block = BlockProposal.block and type transaction = BlockProposal.transaction and type proof = BlockProposal.proof)
   (CheckpointFinalization : Checkpoint with type blocktree = BlockValidation.blocktree) = struct
@@ -58,7 +59,7 @@ module Main
   let run bc txs checkpointTree receiveChannel networkChannels = begin
     let tmpBlockSet : (BlockProposal.block list ref) = ref [] in
     let rec main () =
-      match (BlockProposal.propose_block !txs) with
+      match (BlockProposal.propose_block txs) with
         | Some (blk, proof) ->
           tmpBlockSet := blk::!tmpBlockSet;
           BlockPropagation.propagate_block (blk, proof) networkChannels
@@ -77,7 +78,7 @@ module Main
             | false -> ()
           end
         | None -> ();
-      bc := BlockFinalization.finalize_block !tmpBlockSet !bc;
+      bc := BlockFinalization.finalize_block tmpBlockSet !bc txs;
       checkpointTree := CheckpointFinalization.finalize_checkpoint !bc !checkpointTree;
       main () in
     main ()

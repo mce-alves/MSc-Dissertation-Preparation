@@ -8,16 +8,14 @@ module type Blocktree = sig
 
   (* the genesis block *)
   val genesis : block
-  (* initial state of the block tree *)
+  (* the initial blocktree, containing only the genesis block *)
   val init : blocktree
   (* write a block to the tree *)
   val write_block : block ->blocktree ->blocktree
-  (* get the head of the best chain *)
+  (* get the head of the best (heaviest) chain in the blocktree *)
   val get_best_chain_head : blocktree ->block
-  (* check if adding <block> to the tree originates a valid chain *)
-  val is_valid_chain : block ->blocktree ->bool
   (* returns the current best chain *)
-  val current_best_chain : blocktree ->(block list)
+  val get_best_chain : blocktree ->(block list)
   (* given a blocktree and two blocks (heads of different chains) *)
   (* returns which should be considered the heaviest chain *)
   val fork_choice_rule : blocktree ->block ->block ->block

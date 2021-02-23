@@ -16,6 +16,8 @@ module type Network = sig
   val max_delay : float
   (* chance to fail when sending a message *)
   val fail_chance : float
+  (* uses the min,max delay bounds, and returns a delay in that interval *)
+  val compute_delay : float
   (* sends a message to the nodes that own the communication channels present in the list *)
   (* A message can be a block*proof, transaction, etc *)
   (* the appropriate channel for the message type will be selected via pattern matchin *)
@@ -24,6 +26,4 @@ module type Network = sig
   val receive_transaction : communication_channels ->(transaction option)
   (* try to receive a block from the network *)
   val receive_block : communication_channels ->((block * proof) option)
-  (* uses the min,max delay bounds, and returns a delay in that interval *)
-  val compute_delay : float
 end

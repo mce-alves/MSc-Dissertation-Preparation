@@ -3,42 +3,38 @@ module type ProofOfStake = sig
   type blocktree
   (* type of an asynchronous round (slot for which the block will be proposed) *)
   type round
-  (* the type representing a role in the protocol (committee member, etc.) *)
-  type role
-  (* the type of the private and public seeds *)
-  type seed
+  (* the type of the private and public seeds/keys *)
+  type key
   (* the type of the hashes *)
   type hash
   (* type of the structure storing the system's users and their stake *)
   type stakes
-  (* the type of the threshold used for sortition *)
-  type threshold
+  (* the type representing a step in the agreement protocol *)
+  type step
   (* the type of the proof produced by the algorithm *)
   type proof
   (* the type that identifies a user *)
-  type user
+  type peer
   (* the type of a peer's vote *)
   type vote
 
-  (* returns the users and their corresponding stakes (weights) *)
+  (* returns the users and their corresponding initial stakes (weights) *)
   val weights : stakes
-  (* cryptographic sorition implementation *)
-  (* selects a random set of users (committee) according to their weight (stake) *)
-  val sortition : stakes ->round ->threshold ->(user list)
-  (* verifiable random function *)
-  (* receives a user's public seed, role and round, and returns its hash and proof *)
-  (* used to verify if a hash and proof of capabilities belong to a given user *)
-  (* can also be used to verify if the user belongs to this round's committee *)
-  val vrf : seed ->role ->round ->(hash * proof)
-  (* checks if a user is the winner (can propose in the current round) *)
-  val check_winner : user ->round ->threshold ->bool
+  (* given a peer's private key, a round and step in the protocol, generates a hash and proof if the peer belongs to the committee for that round and step *)
+  val committee_sortition : key ->round ->step ->((hash * proof) option)
+  (* given a peer's private key and a round, generates a hash and proof if the peer was selected to proposer a block in that round *)
+  val proposer_sortition : key ->round ->((hash * proof) option)
+  (* given a peer's private key, a round and step in the protocol, and a hash*proof credential, returns whether or not the credentials are valid and belong to the public key's owner *)
+  val committee_validation: key ->round ->step ->(hash * proof) ->bool
+  (* given a peer's private key, a round in the protocol and a hash*proof credential, returns whether or not the credentials are valid and belong to the public key's owner *)
+  val proposer_validation: key ->round ->(hash * proof) ->bool
 
 
   (** PoS Checkpoint Operations (main source for these signatures is Casper FFG) **)
 
   (* given the current blocktree, checkpointtree, user and round, creates a vote *)
   (* representing which block the user believes should be the next checkpoint *)
-  val create_checkpoint_vote : blocktree ->blocktree ->user ->round ->vote
+  val create_checkpoint_vote : blocktree ->blocktree ->peer ->round ->vote
   (* cheks if a vote is valid -> compare against slashing rules *)
   val validate_vote : blocktree ->vote ->bool
   (* process a received vote, and store it if it is valid (also store the block in the tree, if it isn't there yet) *)
