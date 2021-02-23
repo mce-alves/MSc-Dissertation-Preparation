@@ -4,3 +4,4 @@ preparacao/implementations/multipaxos_vs_raft/target
 ocaml/blockchain/*.cmi
 ocaml/blockchain/*.cmo
 ocaml/blockchain/*.exe
+ocaml/blockchain/tmp/tmp.mli
