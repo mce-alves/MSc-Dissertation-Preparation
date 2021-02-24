@@ -25,11 +25,15 @@
 
 Consensus protocols have crucial roles among distributed systems, such as blockchain technologies. They enable coordination between multiple machines, allowing them to maintain a replicated state and are therefore crucial in building reliable, large-scale distributed systems.
 
-Blockchain protocols are a composition of steps executed by each node in a network to maintain a distributed ledger among multiple nodes, and also enables the development of smart contracts.
+In recent years, blockchain technologies have been rising in popularity leading to the emergence of several different protocols, algorithms and parameterizations.
 
-These blockchain protocols possess several underlying components, or algorithms, and each of which may have several parameters that can influence the performance and behavior of the overall protocol. It is therefore important to be able to reason about the choice of these parameters before deploying the protocol to a real environment.
+Blockchain protocols are a composition of steps executed by each node in a network to maintain a distributed ledger among multiple nodes, and also enables the development of smart contracts. These protocols possess several underlying components, or algorithms, and each of which may have several parameters that can influence the performance and behavior of the overall protocol.
 
-In recent years, blockchain technologies have been rising in popularity leading to the emergence of several different protocols, algorithms and parameterizations. Hence, there is a need to divide blockchain protocols into essential components, to achieve better abstraction between different protocols, and extract their similarities and key differences. These components can then be used as building blocks to structure the presentation and implementation of the protocols, enhancing their readability and code reusability, and thus enabling the development of an extensible simulation environment.
+It should be highlighted that these protocols are not written in stone, they are constantly evolving. For example, Ethereum \cite{ethereum_whitepaper} uses a blockchain protocol based on proof of work. Their current goal is to migrate towards an implementation based solely on proof of stake for Ethereum2 \cite{eth2}. At the current stage of development, Ethereum2 is implemented as a hybrid proof of work and proof of stake protocol, utilizing a proof of work block proposal mechanism, and a proof of stake checkpoint mechanism for block finalization.
+
+Another example is Tezos \cite{tezos}, that possesses a key novel of \textit{self-ammendment}. Stakeholders participating in the system propose and agree on changes and upgrades to the core protocol itself, allowing the protocol to evolve over time. 
+
+It is therefore necessary to develop tools that can aid in supporting these evolutions.
 
 Chapter \ref{cha:background} will present consensus and blockchain protocols in further detail.
 
@@ -44,7 +48,7 @@ Consensus protocols are notoriously difficult to understand and even harder to d
 
 \noindent which is the problem this thesis aims to address.
 
-
+Hence, there is a need to divide these protocols into essential components, to achieve better abstraction between different protocols, and extract their similarities and key differences. These components can then be used as building blocks to structure the presentation and implementation of the protocols, enhancing their readability and code reusability, and thus enabling the development of an extensible simulation environment to study these protocols.
 
 \section{Goal}
 
@@ -59,10 +63,11 @@ The simulation environment should be:
   \item focused on providing a qualitative evaluation of the simulated protocols.
 \end{itemize}
 
-The goal is \textbf{not} to simulate the protocol's behaviour when compared to reality as a mean fo testing it's efficiency, but rather to provide researchers results that allow them to reason about certain properties of the implementations, such as: How many adversaries does the system support? Is the system fair when handling stakeholders with different stakes?
+The goal is \textbf{not} to simulate the protocol's behaviour when compared to reality as a mean for testing its efficiency, but rather to provide researchers results that allow them to reason about certain properties of the implementations, such as: How many adversaries does the system support? Is the system fair when handling stakeholders with different stakes?
+
+\vspace{0.5cm}
+
+This thesis is being developed in the context of NOVA LINCS research unit, in parallel with other projects. The goal of this group of projects is to develop tools to support rapid prototyping, simulations, reasoning and benchmarking of consensus algorithms and protocols. This will be achieved through the development of a Domain Specific Language (DSL) paired with static and dynamic analysis tools. The DSL should support defining executable specifications of protocols, which can then be linked with the different tools to allow for qualitative and quantitative analysis.
 
 
-This thesis is being developed in the context of NOVA LINCS research unit, in parallel with two other projects which aim to supply researchers with tools that facilitate the empirical analysis of blockchain protocols.
-
-The other projects consist in producing a DSL (Domain Specific Language) for specifying these protocols, which could then be compiled and executed in the simulator and also compiled to another environment where formal proofing will be executed.
 
