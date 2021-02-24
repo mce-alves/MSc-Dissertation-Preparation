@@ -22,38 +22,40 @@ The project is divided into six major development phases. The timeframes to comp
 \begin{figure}[h]
     \centering
 
-    \begin{ganttchart}[
-        hgrid,
-        vgrid={*{6}{draw=none}, dotted},
-        bar/.append style={fill=black},
-        bar incomplete/.append style={fill=white},
-        time slot format=isodate,
-        time slot format/base century=2000,
-        x unit=0.063cm,
-        y unit chart=0.6cm,
-        y unit title=1cm, % height of title line and gap
-        title height=1, % use full height for title, leaving no gap
-        bar top shift=1.15,
-        bar height=0.8,
-        title label font=\bfseries\normalsize,
-        time slot format/start date=2021-03-01]{2021-03-01}{2021-09-30}
-    \gantttitle{Work Plan}{214} \\
-    \gantttitlecalendar{year, month=shortname} \\
-    \gantttitlecalendar[title height=1.6, title label node/.append style={rotate=90}]{week} \\
-    \ganttbar{Phase 1}{2021-03-12}{2021-04-04} \\
-    \ganttbar{Phase 2}{2021-04-12}{2021-05-16}
-    \ganttbar{}{2021-07-26}{2021-08-08} \\
-    \ganttbar{Phase 3}{2021-05-17}{2021-06-06}
-    \ganttbar{}{2021-06-21}{2021-07-04}
-    \ganttbar{}{2021-07-19}{2021-07-25} \\
-    \ganttbar{Phase 4}{2021-06-07}{2021-06-20}
-    \ganttbar{}{2021-07-05}{2021-07-18} \\
-    \ganttbar{Phase 5}{2021-08-09}{2021-08-29}
-    \ganttbar{}{2021-09-06}{2021-09-19} \\
-    \ganttbar{Phase 6}{2021-04-05}{2021-04-11}
-    \ganttbar{}{2021-08-30}{2021-09-05}
-    \ganttbar{}{2021-09-20}{2021-09-30} \\
-    \end{ganttchart}
+    \resizebox{10cm}{!}{
+        \begin{ganttchart}[
+            hgrid,
+            vgrid={*{6}{draw=none}, dotted},
+            bar/.append style={fill=black},
+            bar incomplete/.append style={fill=white},
+            time slot format=isodate,
+            time slot format/base century=2000,
+            x unit=0.063cm,
+            y unit chart=0.6cm,
+            y unit title=1cm, % height of title line and gap
+            title height=1, % use full height for title, leaving no gap
+            bar top shift=1.15,
+            bar height=0.8,
+            title label font=\bfseries\normalsize,
+            time slot format/start date=2021-03-01]{2021-03-01}{2021-09-30}
+        \gantttitle{Work Plan}{214} \\
+        \gantttitlecalendar{year, month=shortname} \\
+        \gantttitlecalendar[title height=1.6, title label node/.append style={rotate=90}]{week} \\
+        \ganttbar{Phase 1}{2021-03-12}{2021-04-04} \\
+        \ganttbar{Phase 2}{2021-04-12}{2021-05-16}
+        \ganttbar{}{2021-07-26}{2021-08-08} \\
+        \ganttbar{Phase 3}{2021-05-17}{2021-06-06}
+        \ganttbar{}{2021-06-21}{2021-07-04}
+        \ganttbar{}{2021-07-19}{2021-07-25} \\
+        \ganttbar{Phase 4}{2021-06-07}{2021-06-20}
+        \ganttbar{}{2021-07-05}{2021-07-18} \\
+        \ganttbar{Phase 5}{2021-08-09}{2021-08-29}
+        \ganttbar{}{2021-09-06}{2021-09-19} \\
+        \ganttbar{Phase 6}{2021-04-05}{2021-04-11}
+        \ganttbar{}{2021-08-30}{2021-09-05}
+        \ganttbar{}{2021-09-20}{2021-09-30} \\
+        \end{ganttchart}
+    }
     
     \caption{Visualization of the allocated timeframes for each phase of development.}
     \label{fig:gantt}
@@ -63,7 +65,7 @@ The project is divided into six major development phases. The timeframes to comp
 
 The following is a more detailed explanation of what will be done in each phase of development.
 
-\vspace{0.5cm}
+\vspace{0.25cm}
 
 \textbf{Phase 1 - 3 Weeks}
 
@@ -73,7 +75,7 @@ An emphasis will be placed on exploring different simulation techniques and best
 
 Three weeks should be an appropriate amount of time, considering that some level of experimentation will be required to not only learn different simulation techniques, but also to better understand which will be the most appropriate for our use case. This phase may also lead to an overhaul of the function signatures that have been defined.
 
-\vspace{0.5cm}
+\vspace{0.25cm}
 
 \textbf{Phase 2 - 6 Weeks}
 
@@ -81,7 +83,7 @@ The second phase will consist in developing the simulator's architecture as well
 
 More precisely, the result of this phase should be a simulation environment where it is possible to simulate different nodes that are able to communicate among themselves in a network, as well as a mechanism for extracting and aggregating relevant data from each node.
 
-\vspace{0.5cm}
+\vspace{0.25cm}
 
 \textbf{Phase 3 - 6 Weeks}
 
@@ -89,7 +91,7 @@ Phase three will involve implementing blockchain specific functionalities.
 
 The data structures and data structure operations will be implemented, as well as essential operations required to simulate the Bitcoin, Algorand and Ethereum protocols - the necessary block proposal, block validation, information propagation, block finalization and incentive mechanism modules for each of the protocols.
 
-\vspace{0.5cm}
+\vspace{0.25cm}
 
 \textbf{Phase 4 - 5 Weeks}
 
@@ -99,7 +101,7 @@ The Bitcoin, Algorand and Ethereum protocols will be simulated, and an objective
 
 The timeframe of five weeks should be appropriate, to account for possible bug fixing, optimizations and adding new functionalities if needed.
 
-\vspace{0.5cm}
+\vspace{0.25cm}
 
 \textbf{Phase 5 - 5 Weeks}
 
@@ -107,7 +109,7 @@ Phase five will be validating the developed simulation environment, through simu
 
 The same protocols will be simulated, varying their parameterizations and analysing their results.
 
-\vspace{0.5cm}
+\vspace{0.25cm}
 
 \textbf{Phase 6 - 5 Weeks}
 
