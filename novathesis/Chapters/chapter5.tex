@@ -40,12 +40,19 @@ The project is divided into six major development phases. The timeframes to comp
     \gantttitle{Work Plan}{214} \\
     \gantttitlecalendar{year, month=shortname} \\
     \gantttitlecalendar[title height=1.6, title label node/.append style={rotate=90}]{week} \\
-    \ganttbar{Phase 1}{2021-03-01}{2021-03-22} \\
-    \ganttbar{Phase 2}{2021-03-23}{2021-05-04} \\
-    \ganttbar{Phase 3}{2021-05-05}{2021-06-16} \\
-    \ganttbar{Phase 4}{2021-06-17}{2021-07-22} \\
-    \ganttbar{Phase 5}{2021-07-23}{2021-08-27} \\
-    \ganttbar{Phase 6}{2021-08-28}{2021-09-30} \\
+    \ganttbar{Phase 1}{2021-03-12}{2021-04-04} \\
+    \ganttbar{Phase 2}{2021-04-12}{2021-05-16}
+    \ganttbar{}{2021-07-26}{2021-08-08} \\
+    \ganttbar{Phase 3}{2021-05-17}{2021-06-06}
+    \ganttbar{}{2021-06-21}{2021-07-04}
+    \ganttbar{}{2021-07-19}{2021-07-25} \\
+    \ganttbar{Phase 4}{2021-06-07}{2021-06-20}
+    \ganttbar{}{2021-07-05}{2021-07-18} \\
+    \ganttbar{Phase 5}{2021-08-09}{2021-08-29}
+    \ganttbar{}{2021-09-06}{2021-09-19} \\
+    \ganttbar{Phase 6}{2021-04-05}{2021-04-11}
+    \ganttbar{}{2021-08-30}{2021-09-05}
+    \ganttbar{}{2021-09-20}{2021-09-30} \\
     \end{ganttchart}
     
     \caption{Visualization of the allocated timeframes for each phase of development.}
@@ -64,7 +71,7 @@ The first phase will consist in performing further research into the state of th
 
 An emphasis will be placed on exploring different simulation techniques and best practices, since this will be crucial for phase two.
 
-Three weeks should be an appropriate amount of time, considering that some level of experimentation will be required to not only learn different simulation techniques, but also to better understand which will be the most appropriate for our use case.
+Three weeks should be an appropriate amount of time, considering that some level of experimentation will be required to not only learn different simulation techniques, but also to better understand which will be the most appropriate for our use case. This phase may also lead to an overhaul of the function signatures that have been defined.
 
 \vspace{0.5cm}
 
@@ -78,7 +85,7 @@ More precisely, the result of this phase should be a simulation environment wher
 
 \textbf{Phase 3 - 6 Weeks}
 
-Phase three will involve implementing blockchain specific functionalities, thus enabling the following phases. 
+Phase three will involve implementing blockchain specific functionalities. 
 
 The data structures and data structure operations will be implemented, as well as essential operations required to simulate the Bitcoin, Algorand and Ethereum protocols - the necessary block proposal, block validation, information propagation, block finalization and incentive mechanism modules for each of the protocols.
 
@@ -102,7 +109,7 @@ The same protocols will be simulated, varying their parameterizations and analys
 
 \vspace{0.5cm}
 
-\textbf{Phase 6 - 6 Weeks}
+\textbf{Phase 6 - 5 Weeks}
 
 Finally, phase six will consist in writting the thesis document and preparing the final presentation.
 
