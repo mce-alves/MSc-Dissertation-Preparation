@@ -36,7 +36,7 @@ We will now present Single-Decree Paxos \cite{paxos_made_simple}, that allows di
 
 \subsection{Single-Decree Paxos}
 
-The Single-Decree Paxos protocol \cite{paxos_made_simple} is used to achieve consensus on a single value, and it has no notion of a replicated log. Each entity involved in the protocol is called a peer, and each peer can assume one, or multiple, of the following roles: \textit{Proposer}, \textit{Acceptor} and \textit{Learner}. The protocol progresses through the exchange of messages between peers as demonstrated, in a simplified way, in figure x. \todo{update reference after adding the figure} The description of the peer’s behavior will be divided among the different roles, to improve readability.
+The Single-Decree Paxos protocol \cite{paxos_made_simple} is used to achieve consensus on a single value, and it has no notion of a replicated log. Each entity involved in the protocol is called a peer, and each peer can assume one, or multiple, of the following roles: \textit{Proposer}, \textit{Acceptor} and \textit{Learner}. The protocol progresses through the exchange of messages between peers. The following description of the peer’s behavior will be divided among the different roles, to improve readability.
 
 When a peer receives a value from a client, it begins behaving like a Proposer. A Proposer executes the following steps \cite{paxos_made_simple}:
 
@@ -65,7 +65,6 @@ Upon receiving a \texttt{PROPOSE} message, an Acceptor will respond in one of tw
 
 Finally, the Learner role represents the entity that will “learn” the value for which consensus was reached. In real systems the Learner are, for example, databases. Therefore, in the articles that describe the protocol, there is very little information about the Learner’s behavior.
 
-\todo{*figure demonstrating the sequence of messages that leads to progress in the protocol*}
 
 It is important to note that, in the presence of concurrent proposals, the Single-Decree Paxos protocol may not terminate as different proposers might send consecutive \texttt{PREPARE} messages with higher proposal numbers for an indefinite amount of time. However, it does guarantee that if consensus is reached, all Learner will “learn” that same agreed upon value.
 
@@ -76,9 +75,10 @@ It is important to note that, in the presence of concurrent proposals, the Singl
 
 The Raft protocol \cite{raft} is used in the context of log replication, ensuring consensus on the order in which the operations contained in the log entries will be applied. Each entity involved in the protocol is called a \textit{peer}, and in any given instant a peer can have one of three roles: \textit{Follower}, \textit{Candidate} or \textit{Leader}.
 
-Each peer stores a \textit{term} and a \textit{log}. The term is used alongside the size of the log to keep track of how up-to-date each peer is. The base structure of a log can be seen in the figure below:
+Each peer stores a \textit{term} and a \textit{log}. The term is used alongside the size of the log to keep track of how up-to-date each peer is.
 
-\todo{*figure showing the log and log entries’ structure*}
+At its core, a log is a sequence of entries. Each entry has an associated index in the log, term when it was added to the log and arbitrary data to be used by the specific system upon reaching consensus - this data can be, for example, the insertion of a tuple in a database that will be executed in all replicas after consensus is reach - which happens when the entry is marked as committed.
+
 
 The protocol can be implemented using message exchange or RPCs (Remote Procedure Calls). 
 
@@ -114,7 +114,7 @@ Upon receiving any message that contains a term larger than its own, the Leader 
 
 \vspace{0.5cm}
 
-The Raft protocol guarantees that peers will reach a consensus on the order of the entries in the log and execute those operations in the same order, however it does not guarantee that all client requests will be added to the log, as some might get lost during leader failures.
+The Raft protocol guarantees that peers will reach a consensus on the order of the entries in the log and execute those operations in the same order, however it does not guarantee that all entries will be added to the log, as some might get lost during leader failures.
 
 
 
@@ -122,11 +122,11 @@ The Raft protocol guarantees that peers will reach a consensus on the order of t
 
 The Single-Decree Paxos protocol describes how to reach a consensus on a single value however, in a majority of scenarios, this is not enough to maintain a proper state of a system. Multi-Decree Paxos is essentially a sequential execution of multiple Single-Decree Paxos rounds, to achieve log replication. 
 
-There are several papers that present somewhat different descriptions of Multi-Decree Paxos, such as \cite{paxos_comple}, \cite{paxos_live} and \cite{paxos_vs_raft}. For now, we will present the protocol as described in “Paxos Made Live - An Engineering Perspective” \cite{paxos_live}.
+There are several papers that present somewhat different descriptions of Multi-Decree Paxos, such as \cite{paxos_complex}, \cite{paxos_live} and \cite{paxos_vs_raft}. For now, we will present the protocol as described in “Paxos Made Live - An Engineering Perspective” \cite{paxos_live}.
 
 The state kept by each peer is very similar to the state kept in Single-Decree Paxos, with the addition of the log entries and the identity of the last known leader.
 
-At the start of the protocol, one peer is elected to act as the \textit{coordinator} (also known as \textit{leader} or \textit{distinguished proposer}). This election can be done through one round of Single-Decree Paxos, where a peer generates a new sequence number and sends a \texttt{PREPARE} message to the remaining peers. If he receives a majority of valid \texttt{PROMISES} then he can start acting as the coordinator. Note that to ensure no out-of-date peers, the \texttt{PREPARE} message must include the peer’s log.
+At the start of the protocol, one peer is elected to act as the \textit{coordinator} (also known as \textit{leader} or \textit{distinguished proposer}). This election can be done through one round of Single-Decree Paxos, where a peer generates a new sequence number and sends a \texttt{PREPARE} message to the remaining peers. If he receives a majority of valid \texttt{PROMISES} then he can start acting as the coordinator. Note that to ensure no out-of-date peers, the \texttt{PREPARE} message must include the peer’s log, which the leader then merges with its own log.
 
 The coordinator can then receive requests from clients or from the other peers, selecting one of those entries to be broadcasted. This is the \texttt{PROPOSE} message sent in Single-Decree Paxos. This message will now also include the coordinator’s log, so that peers that failed in a previous iteration of the protocol may catch up to the current state of the system.
 
@@ -153,9 +153,20 @@ A blockchain protocol is the composition of steps executed by each node in a net
 
 Blockchain protocols often function under the assumption that nodes do not necessarily trust each other, however they still need to reach a consensus on the ordering of the blocks in the blockchain.
 
-The object of the consensus is a chain of blocks, as depicted in figure x. However, in practice, it is not uncommon for the data structure stored by each node to be a tree of blocks (figure y) as forks may occur, which will be further explained in later sections.
+The object of the consensus is a chain of blocks, as depicted in figure x. However, in practice, it is not uncommon for the data structure stored by each node to be a tree of blocks (simplified in figure \ref{fig:tree}) as forks may occur, which will be further explained in later sections.
 
-\todo{*insert the two figures here*}
+\begin{figure}[h]
+
+  \Tree[.Genesis 
+    [.A ]
+    [.B ]
+    [.C [.D ][.E F ] ]
+  ]
+
+  \caption{All chains must have the \textit{Genesis} block as root. In this example, the block \textbf{F} is the head of the longest chain, and blocks \textbf{A}, \textbf{B} and \textbf{D} are referred to as stale or orphan blocks.}
+  \label{fig:tree}
+\end{figure}
+
 
 \vspace{0.5cm}
 
@@ -313,7 +324,7 @@ Each node begins the agreement protocol with the block with highest associated p
   \item If the node sees a majority of soft-votes for a non-empty block, then it sends a cert-vote for that block.
   \item If the node has certified some value in the current period, it sends a next-vote for that same value. Else, if it has seen a majority of next-votes for an empty block, it also sends a next-vote for an empty block. Otherwise, it sends a next-vote for its starting block.
   \item If the node sees a majority of soft-votes for a non-empty block, then it sends a next-vote for that block. Otherwise, if it sees a majority of next-votes for an empty block, and it has not certified a block in this period, it sends a next-vote for an empty block.
-  \item If a node sees a majority of cert-votes for one block for the same period, it sets that block as the output of its agreement protocol. The set of those cert-votes form a certificate for the block, meaning consensus was reached and it can be appended to the blockchain.
+  \item If a node sees a majority of cert-votes for one block for the same period, it sets that block as the output of its agreement protocol. The set of those cert-votes form a certificate for the block, meaning consensus was reached and it can be appended to the blockchain. Otherwise, a new round of the agreement protocol begins.
 \end{enumerate}
 
 Note that regardless of whether or not a node belongs to the committee, it keeps track of the messages (votes) exchanged by the committee members. This is important because it allows committee members to be replaced every period, while maintaining the progress achieved in previous periods which helps protect the network against targeted denial of service attacks.
@@ -342,7 +353,7 @@ The following is a description, divided according to the five component framewor
 
 Miner nodes gather received transactions and pack them into a block. Since transactions may trigger state transition functions, it is necessary for the block to also include the most recent state - the state reached after the miner applied the transactions contained in the block, which may trigger contract code that changes the state.
 
-The miner also includes 0 or more stale blocks (a visualization of stale blocks can be seen in figure x), also referred to as orphan or uncle blocks, into the created block. The included uncle blocks must be different than all uncles included in the previous blocks that belong to the chain that is being extended.
+The miner also includes zero or more stale blocks, also referred to as orphan or uncle blocks, into the created block. The included uncle blocks must be different than all uncles included in the previous blocks that belong to the chain that is being extended.
 
 Finally, nodes execute a process similar to Bitcoin’s proof of work. The difference is that the resulting proof is a nonce that when hashed together with the block header and a dataset obtained by downloading the full blockchain, must be lower than a target value.
 
@@ -366,7 +377,7 @@ Then it will apply the transactions contained in the block. If any transaction r
 
 \textbf{Block Finalization}
 
-In the Ethereum network, nodes follow the Greedy Heaviest Observed Subtree (GHOST) rule. This is similar to the longest chain rule, where nodes work to extend the longest chain, but it also considers the uncle blocks in the calculation of which chain is the “longest”.
+In the Ethereum network, nodes follow the Greedy Heaviest Observed Subtree, or GHOST rule. This is similar to the longest chain rule, where nodes work to extend the longest chain, but it also considers the uncle blocks in the calculation of which chain is the “longest”.
 
 As with the longest chain rule, when a block is sufficiently deep in the chain, it can be considered final with a high probability.
 
@@ -399,12 +410,13 @@ Once a checkpoint becomes finalized, all the blocks it extends not only in the c
 
 Nodes get rewarded for successfully creating a block that gets appended to the main chain and for the associated transaction fees. Besides that, a node also is also rewarded for the creation of stale blocks that get included as uncles in blocks that extend the main chain.
 
-\todo{*figure showing what a stale/uncle block is*}
-
-
 
 
 
 \section{Simulation}
 
-\todo{*the goal isn’t to simulate the protocol’s behavior when compared to reality, but to simulate the influence of parameter values in the overall behavior of the protocol*}
+\textit{"Simulation is the imitation of the operations of a real-world process or system over time"} \cite{intro_simulation}. It is a crucial tool for solving problems and to study the behavior of real systems.
+
+Discrete event simulation is a widely used simulation model where the state of the system is only updated at discrete points in time where the events occur. In this models it is common for a central mechanism to manage the system, progressively updating the simulated time and scheduling the execution of these events.
+
+Overall, simulation offers several benefits \cite{intro_simulation} such as providing a controled environment to test specific scenarios, without the influence of external factors. It also provides users the ability to test the effects of system changes, before deploying those changes to production where any mistakes can have severe impacts, which is of upmost importance in blockchain systems since they often control financial transactions.
