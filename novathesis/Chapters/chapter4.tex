@@ -90,137 +90,34 @@ After the logs have been merged, the term of all uncommitted entries will be upd
 
 \section{Blockchain Protocols in OCaml}
 
-To begin defining the abstractions for the blockchain protocols that will be simulated, the signatures of high-level functions used in the different components of Bitcoin, Ethereum and Algorand were defined, as well as a template for a modular main function that can be used by the three protocols.
+To begin defining the abstractions for the blockchain protocols that will be simulated, the signatures of high-level functions used in the different components of Bitcoin, Ethereum and Algorand were defined and divided into modules, and a template for a modular main function that can be used by the three protocols was also defined.
 
 OCaml is the language of choice because it provides the right amount of abstraction we require, however there are some questions regarding whether or not the language's multithreading capabilities will be able to satisfy our needs.
 
-In the following sections, we will present the signatures of essential functions in the Bitcoin, Algorand and Ethereum protocols, the reusable module based top-level function and the intended usage for this function.
+In the following sections, the module signatures of essential functions identified in the Bitcoin, Algorand and Ethereum protocols will be presented, as well as the reusable module based top-level function and its intended usage.
 
 \subsection{Function Signatures}
 
-The function signatures are divided into modules, and the types used in the signatures are defined as abstract types in those same modules. This was a design choice for this phase, as it improves the readability of the signatures.
-
-\vspace{0.2cm}
-
-First, the essential operations involved in proof of work were identified, based mainly on the Bitcoin \cite{bitcoin} and Ethereum \cite{ethereum_whitepaper} protocols, producing the following signatures:
-
-\begin{itemize}
-    \itemsep0em
-    \item \texttt{val init\_nonce : nonce}
-      \begin{description}
-        \item returns the initial \textit{nonce} to be used when mining.
-      \end{description}
-    \item \texttt{val next\_nonce : nonce $\rightarrow{}$nonce}
-      \begin{description}
-        \item receives a \textit{nonce} and returns the next one to be used.
-      \end{description}
-    \item \texttt{val compute\_hash : block $\rightarrow{}$nonce $\rightarrow{}$hash}
-      \begin{description}
-        \item receives a \textit{block} and a \textit{nonce} and returns the resulting \textit{hash}.
-      \end{description}
-    \item \texttt{val acceptance\_function : hash $\rightarrow{}$threshold $\rightarrow{}$bool}
-      \begin{description}
-        \item validates whether or not a \textit{hash} is valid, when compared to a \textit{threshold} defined by the hash difficulty.
-      \end{description}
-\end{itemize}
+The goal of this section was to identify essential functions that are used by different protocols, and divide them into modules. When implemented, these modules should serve as a library that provides functions and structures commonly used by blockchain protocols, facilitating the development of the top-level modules used in the modular main function, which will be presented in the following section.
 
 
-The process was then repeated for proof of stake, mostly based on the Algorand \cite{algorand_scale_byz_agreements} protocol:
+To this end, the following modules were defined, using as reference the Bitcoin, Algorand and Ethereum protocols: \texttt{Network}, \texttt{Blocktree}, \texttt{ProofOfStake} and \texttt{ProofOfWork}.
 
-\begin{itemize}
-    \itemsep0em
-    \item \texttt{val weights : stakes}
-      \begin{description}
-        \item returns the users and their corresponding initial weights, or \textit{stakes}.
-      \end{description}
-    \item \texttt{val committee\_sortition:key $\rightarrow{}$round $\rightarrow{}$step $\rightarrow{}$((hash * proof) option)}
-      \begin{description}
-        \item given a peer's \textit{private} key, a round and a step in the protocol, returns the credentials for that peer (the \textit{hash} and \textit{proof} pair produced by a verifiable random function \cite{algorand_scale_byz_agreements}), if it was selected to belong to the committee for that round and step in the protocol.
-      \end{description}
-    \item \texttt{val proposer\_sortition : key $\rightarrow{}$round $\rightarrow{}$((hash * proof) option)}
-      \begin{description}
-        \item given a peer's \textit{private} key and a round in the protocol, returns the credentials for that peer (the \textit{hash} and \textit{proof} pair produced by a verifiable random function \cite{algorand_scale_byz_agreements}), if it was selected to propose a block in that round.
-      \end{description}
-    \item \texttt{val committee\_validation:key $\rightarrow{}$round $\rightarrow{}$step $\rightarrow{}$(hash * proof) $\rightarrow{}$bool}
-      \begin{description}
-        \item given a peer's \textit{public} key, a round and step in the protocol, and credentials, returns whether or not the credentials are valid and belong to the owner of the specified \textit{public} key.
-      \end{description}
-      \item \texttt{val proposer\_validation: key $\rightarrow{}$round $\rightarrow{}$(hash * proof) $\rightarrow{}$bool}
-      \begin{description}
-        \item given a peer's \textit{public} key, a round in the protocol, and credentials, returns whether or not the credentials are valid and belong to the owner of the specified \textit{public} key.
-      \end{description}
-\end{itemize}
+The \texttt{Blocktree} module, contains operations that should be applied to a blocktree data structure. For example, retrieving the best chain in the tree, checking if a block is already in the tree, among other operations.
 
+The \texttt{ProofOfWork} module, defines operations commonly used in proof of work protocols, such as computing the hash of a block and a \textit{nonce}, as well as verifying if the produced hash is valid, through the execution of an acceptance function.
 
-Then, several essential function were identified for the \textit{blocktree} data structure maintained by each peer:
+The \texttt{ProofOfStake} module, defines operations to select committee members and proposers for a given round, as well as operations to validate their credentials/capabilities.
 
-\begin{itemize}
-    \item \texttt{val genesis : block}
-      \begin{description}
-        \item returns the genesis block. All chains will build on top of this block.
-      \end{description}
-    \item \texttt{val init : blocktree}
-      \begin{description}
-        \item returns the initial \textit{blocktree} datastructure, containing only the genesis block.
-      \end{description} 
-    \item \texttt{val write\_block : block $\rightarrow{}$blocktree $\rightarrow{}$blocktree}
-      \begin{description}
-        \item adds a new block to the \textit{blocktree}, returning the resulting \textit{blocktree}.
-      \end{description}
-    \item \texttt{val get\_best\_chain\_head : blocktree $\rightarrow{}$block}
-      \begin{description}
-        \item returns the head of the best (heaviest) chain in the \textit{blocktree}.
-      \end{description}
-    \item \texttt{val get\_best\_chain : blocktree $\rightarrow{}$(block list)}
-      \begin{description}
-        \item returns the best (heaviest) chain in the \textit{blocktree}.
-      \end{description}
-    \item \texttt{val fork\_choice\_rule : blocktree $\rightarrow{}$block $\rightarrow{}$block $\rightarrow{}$block}
-      \begin{description}
-        \item given the \textit{blocktree} and two distinct blocks, returns the block that belongs to the heaviest chain.
-      \end{description} 
-    \item \texttt{val no\_cycles : blocktree $\rightarrow{}$block $\rightarrow{}$bool}
-      \begin{description}
-        \item given a \textit{blocktree} and a block, returns whether adding that block to the tree would create a cycle.
-      \end{description}
-    \item \texttt{val contains\_hash : blocktree $\rightarrow{}$hash $\rightarrow{}$bool}
-      \begin{description}
-        \item checks if a \textit{blocktree} already contains a block with the specified hash.
-      \end{description} 
-\end{itemize}
+Finally, the \texttt{Network} module defines operations to send and receive messages, as well as compute network delays.
 
-Finally, the same was done for relevant network operations:
+The full module signatures can be found in the Appendix \ref{app:signatures}. All types are defined as abstract types in each module, to improve the readability of the signatures in this phase. Most of the types are intuitive, however it is worth delving deeper into the intended usage of the communication channels in the \texttt{Network} module.
 
-\begin{itemize}
-  \item \texttt{val min\_delay : float}
-    \begin{description}
-      \item the minimum delay that occurs when sending a message.
-    \end{description}
-  \item \texttt{val max\_delay : float}
-    \begin{description}
-      \item the maximum delay that can occur when sending a message.
-    \end{description}
-  \item \texttt{val fail\_chance : float}
-    \begin{description}
-      \item the chance for a message to not reach its destination.
-    \end{description}
-  \item \texttt{val send\_message : message $\rightarrow{}$(communication\_channels list) $\rightarrow{}$unit}
-    \begin{description}
-      \item sends a message to the nodes that own the communication channels present in the list.
-    \end{description}
-  \item \texttt{val receive\_transaction:communication\_channels $\rightarrow{}$(transaction option)}
-    \begin{description}
-      \item check the communication channel to see if there is a new transaction to be received.
-    \end{description}
-  \item \texttt{val receive\_block:communication\_channels $\rightarrow{}$((block * proof) option)}
-    \begin{description}
-      \item check the communication channel to see if there is a new block and associated proof to be received.
-    \end{description}
-\end{itemize}
-
-It is worth delving deeper into the intended usage of the communication channels. The \texttt{communication\_channels} type should be a set of multiple message channels, one for each type of message being exchanged in the network - one can expect, at the very least, one channel for blocks and another for transactions. The receive operations will then check the respective channel for new messages, and the \texttt{send\_message} operation can receive as an argument any message type, and through pattern matching the correct communication channel will be used.
+The \texttt{communication\_channels} type should be a set of multiple message channels, one for each type of message being exchanged in the network - one can expect, at the very least, one channel for blocks and another for transactions. The receive operations will then check the respective channel for new messages, and the \texttt{send\_message} operation can receive as an argument any message type, and through pattern matching the correct communication channel will be used.
 
 The implementation of these communication channels could leverage, for example, \textit{camlboxes} from the \textit{Netcamlbox} module provided in the \textit{Ocamlnet} package \cite{ocamlnet}. \textit{Camlboxes} provide an inter-process communication mechanism through what are essentially mailboxes, supporting a \textit{multiple producer and single consumer} scenario.
+
+
 
 
 
@@ -314,5 +211,5 @@ Note that this \textit{functor} is a good foundation, however it must be further
 
 \vspace{0.2cm}
 
-As mentioned, to use the presented \textit{functor}, one must implement the required input modules, which were defined according to the Five Component Framework. The Five Component Framework was presented in more detail in Chapter \ref{cha:background}, as well as an explanation of what each of the five components does in the Bitcoin, Algorand and Ethereum protocols.
+As mentioned, to use the presented \textit{functor}, one must implement the required input modules, which were defined according to the Five Component Framework. The Five Component Framework was presented in more detail in Chapter \ref{cha:background}, as well as an explanation of the behavior each of the five components encompasses in the Bitcoin, Algorand and Ethereum protocols.
 

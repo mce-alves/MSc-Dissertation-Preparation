@@ -8,13 +8,126 @@
 
 \typeout{NT LOADING FILE appendix1.tex}
 
-\chapter{\emph{NOVAthesis} covers showcase}
-\label{app:covers_showcase}
+\chapter{OCaml Module Signatures}
+\label{app:signatures}
 
-\newcommand{\showcasecoversize}{0.3\linewidth}
-\newcommand{\myincludeimage}[1]{%
-    \fbox{\includegraphics[width=\showcasecoversize]{#1}}
-    \hfill
-}
+\lstset{language=caml, keywordstyle=\color{blue}, caption=Network Module, label=lst:main}
+\begin{lstlisting}
+module type Network = sig
+    (* the type of blocks included in the messages *)
+    type block
+    (* the type of proof that is associated with a block *)
+    type proof
+    (* the type of a transaction *)
+    type transaction
+    (* the type of the messages sent in the network *)
+    type message
+    (* the communications channels used for message exchange *)
+    type communication_channels
+  
+    (* minimum delay when sending a message *)
+    val min_delay : float
+    (* maximum delay when sending a message *)
+    val max_delay : float
+    (* chance to fail when sending a message *)
+    val fail_chance : float
+    (* uses the min,max delay bounds, and returns a delay in that interval *)
+    val compute_delay : float
+    (* sends a message to the provided communication channels *)
+    (* A message can be a block*proof, transaction, etc *)
+    (* An appropriate channel for the message type will be selected via pattern matching *)
+    val send_message : message ->(communication_channels list) ->unit
+    (* try to receive a new transaction *)
+    val receive_transaction : communication_channels ->(transaction option)
+    (* try to receive a block from the network *)
+    val receive_block : communication_channels ->((block * proof) option)
+end
+\end{lstlisting}
 
-\forcsvlist{\myincludeimage}{cover-phd-nova-fct, cover-phd-nova-fcsh, cover-phd-nova-ims, cover-phd-nova-ensp, cover-phd-ul-fc, cover-phd-ul-ist, cover-phd-ipl-isel, cover-phd-ips-ests, cover-phd-esep}
+\lstset{language=caml, keywordstyle=\color{blue}, caption=Blocktree Module, label=lst:main}
+\begin{lstlisting}
+    module type Blocktree = sig
+    (* the type of the blocks in the block tree *)
+    type block
+    (* the type of the hash of a block *)
+    type hash
+    (* the type of the block tree's implementation *)
+    type blocktree
+  
+    (* the genesis block *)
+    val genesis : block
+    (* the initial blocktree, containing only the genesis block *)
+    val init : blocktree
+    (* write a block to the tree *)
+    val write_block : block ->blocktree ->blocktree
+    (* get the head of the best (heaviest) chain in the blocktree *)
+    val get_best_chain_head : blocktree ->block
+    (* returns the current best chain *)
+    val get_best_chain : blocktree ->(block list)
+    (* given a blocktree and two blocks (heads of different chains) *)
+    (* returns which should be considered the heaviest chain *)
+    val fork_choice_rule : blocktree ->block ->block ->block
+    (* ensures that adding the block to the tree won't cause cycles *)
+    (* true==no cycles *)
+    val no_cycles : blocktree ->block ->bool
+    (* checks if the blocktree already contains a block with the same hash *)
+    val contains_hash : blocktree ->hash ->bool
+
+end
+\end{lstlisting}
+
+\lstset{language=caml, keywordstyle=\color{blue}, caption=Proof of Work Module, label=lst:main}
+\begin{lstlisting}
+module type ProofOfWork = sig
+    (* the type of the block's implementation *)
+    type block
+    (* the type of the hash *)
+    type hash
+    (* the type of the nonce *)
+    type nonce
+    (* the type of the acceptance threshold *)
+    type threshold
+
+    (* the initial nonce that should be used *)
+    val init_nonce : nonce
+    (* receives a nonce and returns the next one to be used *)
+    val next_nonce : nonce ->nonce
+    (* computes a hash, given a block and a nonce *)
+    val compute_hash : block ->nonce ->hash
+    (* accepts (true) or refuses (false) a hash by comparing it to a threshold *)
+    val acceptance_function : hash ->threshold ->bool
+
+end
+\end{lstlisting}
+
+\lstset{language=caml, keywordstyle=\color{blue}, caption=Proof of Stake Module, label=lst:main}
+\begin{lstlisting}
+module type ProofOfStake = sig
+    (* the type of the blocktree/blockchain *)
+    type blocktree
+    (* type of an asynchronous round (slot for which the block will be proposed) *)
+    type round
+    (* the type of the private and public seeds/keys *)
+    type key
+    (* the type of the hashes *)
+    type hash
+    (* type of the structure storing the system's users and their stake *)
+    type stakes
+    (* the type representing a step in the agreement protocol *)
+    type step
+    (* the type of the proof produced by the algorithm *)
+    type proof
+  
+    (* returns the users and their corresponding initial stakes (weights) *)
+    val weights : stakes
+    (* given a peer's private key, a round and step in the protocol, generates a hash and proof if the peer belongs to the committee for that round and step *)
+    val committee_sortition : key ->round ->step ->((hash * proof) option)
+    (* given a peer's private key and a round, generates a hash and proof if the peer was selected to proposer a block in that round *)
+    val proposer_sortition : key ->round ->((hash * proof) option)
+    (* given a peer's private key, a round and step in the protocol, and a hash*proof credential, returns whether or not the credentials are valid and belong to the public key's owner *)
+    val committee_validation: key ->round ->step ->(hash * proof) ->bool
+    (* given a peer's private key, a round in the protocol and a hash*proof credential, returns whether or not the credentials are valid and belong to the public key's owner *)
+    val proposer_validation: key ->round ->(hash * proof) ->bool
+  
+end
+\end{lstlisting}

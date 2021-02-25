@@ -20,7 +20,7 @@ module type Network = sig
   val compute_delay : float
   (* sends a message to the nodes that own the communication channels present in the list *)
   (* A message can be a block*proof, transaction, etc *)
-  (* the appropriate channel for the message type will be selected via pattern matchin *)
+  (* the appropriate channel for the message type will be selected via pattern matching *)
   val send_message : message ->(communication_channels list) ->unit
   (* try to receive a new transaction *)
   val receive_transaction : communication_channels ->(transaction option)

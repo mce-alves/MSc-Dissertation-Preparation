@@ -8,30 +8,16 @@
 
 \typeout{NT LOADING FILE abstrac-pt.tex}
 
-Independentemente da língua em que está escrita a dissertação, é necessário um resumo na língua do texto principal e um resumo noutra língua.  Assume-se que as duas línguas em questão serão sempre o Português e o Inglês.
 
-O \emph{template} colocará automaticamente em primeiro lugar o resumo na língua do texto principal e depois o resumo na outra língua.  Por exemplo, se a dissertação está escrita em Português, primeiro aparecerá o resumo em Português, depois em Inglês, seguido do texto principal em Português. Se a dissertação está escrita em Inglês, primeiro aparecerá o resumo em Inglês, depois em Português, seguido do texto principal em Inglês.
+Os protocolos de consenso permitem a sincronização entre múltiplas máquinas de forma a que estas armazenem um estado replicado, sendo assim cruciais no desenvolvimento de sistemas distribuídos de confiança e de grande escala, como é o caso das tecnologias de blockchain que têm ganho popularidade nos últimos anos.
 
-O resumo não deve exceder uma página e deve responder às seguintes questões:
-\begin{itemize}
-% What's the problem?
-	\item Qual é o problema?
-% Why is it interesting?
-	\item Porque é que ele é interessante?
-% What's the solution?
-	\item Qual é a solução?
-% What follows from the solution?
-	\item O que resulta (implicações) da solução?
-\end{itemize}
+No entanto, estes protocolos são regularmente apresentados através de descrições de alto nível ou em "pseudo-código", limitando a nossa capacidade de raciocinar sobre os mesmos. Para além disso, estes protocolos evoluem constantemente. Por exemplo, Ethereum usa um protocolo de blockchain baseado em proof of work, no entanto tem vindo a adotar gradualmente uma implementação baseada em proof of stake. Um outro exemplo é o caso de Tezos, onde os participantes do sistema possuem a capacidade de propôr e aceitar alterações ao protocolo do sistema em si, permitindo que este evolua ao longo do tempo. É assim importante desenvolver ferramentas que assistam esta evolução.
 
-E agora vamos fazer um teste com uma quebra de linha no hífen a ver se a \LaTeX\ duplica o hífen na linha seguinte…
+Esta tese tem como objetivo combater a falta de ferramentas de especificação e experimentação para desenvolver protocolos de consenso e de blockchain, ajudando assim a estudar as suas propriedades. O contributo será um ambiente de simulação que assista investigadores nas decisões que necessitam de realizar no desenho e desenvolvimento destes protocolos. A simulação de protocolos distribuídos, de consenso e de blockchain é uma área ativa, no entanto, a maioria dos simuladores possuem um foco na realização de análises de desempenho dos sistemas, e não nos princípios do seu desenho. O ambiente de simulação usará uma Linguagem de Domínio Específico (DSL) funcional de forma a abstrair a implementação de protocolos de blockchain, com o objetivo de melhorar a interpretação e reutilização do código escrito, bem como facilitar o raciocínio sobre a implementação dos mesmos. O simulador deve ser modular e extensível, permitindo que o utilizador possa fazer alterações de forma a simular diferentes famílias de protocolos. Por fim, o simulador proposto deve ser parameterizável de forma a permitir o estudo dos efeitos causados por diferentes parameterizações dos protocolos.
 
-zzzz zzz zzzz zzz zzzz zzz zzzz zzz zzzz zzz zzzz zzz zzzz zzz zzzz zzz zzzz comentar"-lhe zzz zzzz zzz zzzz 
-
-Sim!  Funciona! :)
 
 % Palavras-chave do resumo em Português
 \begin{keywords}
-Palavra-chave 1, Palavra-chave 2, Palavra-chave 3,  \ldots
+Protocolos de consenso, blockchain, simulação de blockchain, simulador extensível, abstração de blockchain
 \end{keywords}
 % to add an extra black line
