@@ -20,22 +20,22 @@ Single-Decree Paxos \cite{paxos_made_simple}, Raft \cite{raft} \cite{paxos_vs_ra
 The three implementations possess the same foundation:
 
 \begin{enumerate}
-  \item Each node is simulated by one thread, and nodes are able to communicate with eachother via Rust's \texttt{mpsc} crate \cite{mpsc_rust}.
+  \item Each node is simulated by one thread and nodes can communicate with each other via Rust's \texttt{mpsc} crate \cite{mpsc_rust}.
   \item Artificial delays were added to some operations, such as sending a message.
   \item Messages can be "lost", therefore some nodes never received them.
   \item Nodes can temporarily fail. During that period of time, they do not receive nor respond to any messages.
   \item Membership is static. There is no notion of membership management as nodes do not leave the network, neither do new nodes join it.
-  \item The execution of the protocols produce verbose output files to aid in understanding the behavior and progress of the protocols.
+  \item The execution of the protocols produces verbose output files to aid in understanding the behavior and progress of the protocols.
 \end{enumerate}
 
 
 \subsection{Single-Decree Paxos}
 
-The implementation of the Single-Decree Paxos protocol following its description \cite{paxos_made_simple} was straightforward, however the resulting implementation has over 500 lines of code, whereas the protocol is usually presented in less than one page of pseudo-code. Most of this overhead is due to having to define the structure of every message sent during the protocol's execution, defining the operations to send, receive and validate each message, and defining error handling and logging operations.
+The implementation of the Single-Decree Paxos protocol following its description \cite{paxos_made_simple} was straightforward, however, the resulting implementation has over 500 lines of code, whereas the protocol is usually presented in less than one page of pseudo-code. Most of this overhead is due to having to define the structure of every message sent during the protocol's execution, defining the operations to send, receive and validate each message, and defining error handling and logging operations.
 
 \vspace{0.2cm}
 
-The main aspect of the protocol that must be highlighted is the fact that different peers must use different proposal numbers, otherwise the \textit{Agreement} property, mentioned in Chapter \ref{cha:background}, would not be ensured. In the toy implementation, a simple solution was achieved using floating point proposal numbers. Each peer starts with a proposal number, where the fractional part of the number is equal to its peer identifier and the peer simply increments this number by 1 as needed.
+The main aspect of the protocol that must be highlighted is the fact that different peers must use different proposal numbers, otherwise the \textit{Agreement} property, mentioned in Chapter \ref{cha:background}, would not be ensured. In the toy implementation, a simple solution was achieved using floating-point proposal numbers. Each peer starts with a proposal number, where the fractional part of the number is equal to its peer identifier and the peer simply increments this number by 1 as needed.
 
 Another possible solution would be for peers to increment the proposal number multiple times, and only use a proposal number \textbf{i} if \textbf{i \% n = p}, where \textbf{n} is the total number of peers in the network and \textbf{p} is the peer's identifier. 
 
@@ -52,9 +52,9 @@ The main difference between the implementation and the original paper \cite{raft
 
 As highlighted in Chapter \ref{cha:background}, the Single-Decree Paxos protocol achieves consensus on a single value, whereas Raft and Multi-Decree Paxos are used to maintain a replicated log. Because of this difference, finding similarities between Raft and Single-Decree Paxos proved difficult, as the main similarities weren't specific to the protocols themselves, but rather specific to how the implementations were structured and how messages were exchanged.
 
-So with the implementation of Multi-Decree Paxos, the main goal was to reuse as much code as possible from the Raft implementation. To this end, the paper \textit{"Paxos vs Raft: Have we reached consensus on distributed consensus?"} \cite{paxos_vs_raft} was used as reference, since the authors presented the Multi-Decree Paxos protocol using Raft's terminology, making it easier to reason about the similarities between them. For example, proposal numbers are the equivalent to Raft's terms and the distinguished proposer is equivalent to Raft's leader.
+So with the implementation of Multi-Decree Paxos, the main goal was to reuse as much code as possible from the Raft implementation. To this end, the paper \textit{"Paxos vs Raft: Have we reached consensus on distributed consensus?"} \cite{paxos_vs_raft} was used as a reference, since the authors presented the Multi-Decree Paxos protocol using Raft's terminology, making it easier to reason about the similarities between them. For example, proposal numbers are equivalent to Raft's terms and the distinguished proposer is equivalent to Raft's leader.
 
-The key differences between the protocols are related to leader election and how log entries are committed. These differences are summarized bellow, as highlighted in the paper \cite{paxos_vs_raft}:
+The key differences between the protocols are related to leader election and how log entries are committed. These differences are summarized below, as highlighted in the paper \cite{paxos_vs_raft}:
 
 \begin{enumerate}
   \item How does the protocol ensure that each term has at most one leader?
@@ -80,7 +80,7 @@ These differences translate to roughly 250 non-reusable lines of code for each p
 
 The section of Multi-Decree Paxos that may require further explanation is how the logs are merged when a leader is elected. As mentioned, each peer keeps track of the last entry that has been committed, and when voting for a candidate the peers will include their log in the vote message.
 
-Upon being elected, the leader will then merge these logs with its own. Already committed entries will not change, however each index after the last committed entry will contain the log entry with the highest term that is included in the log of a peer at that same index - in summary, each index will contain the most up-to-date log entry among the logs of all peers in the network.
+Upon being elected, the leader will then merge these logs with its own. Already committed entries will not change, however, each index after the last committed entry will contain the log entry with the highest term that is included in the log of a peer at that same index - in summary, each index will contain the most up-to-date log entry among the logs of all peers in the network.
 
 After the logs have been merged, the term of all uncommitted entries will be updated to the leader's current term.
 
@@ -92,13 +92,13 @@ After the logs have been merged, the term of all uncommitted entries will be upd
 
 To begin defining the abstractions for the blockchain protocols that will be simulated, the signatures of high-level functions used in the different components of Bitcoin, Ethereum and Algorand were defined and divided into modules, and a template for a modular main function that can be used by the three protocols was also defined.
 
-OCaml is the language of choice because it provides the right amount of abstraction we require, however there are some questions regarding whether or not the language's multithreading capabilities will be able to satisfy our needs.
+OCaml is the language of choice because it provides the right amount of abstraction we require, however, there are some questions regarding whether or not the language's multithreading capabilities will be able to satisfy our needs.
 
-In the following sections, the module signatures of essential functions identified in the Bitcoin, Algorand and Ethereum protocols will be presented, as well as the reusable module based top-level function and its intended usage.
+In the following sections, the module signatures of essential functions identified in the Bitcoin, Algorand and Ethereum protocols will be presented, as well as the reusable module-based top-level function and its intended usage.
 
 \subsection{Function Signatures}
 
-The goal of this section was to identify essential functions that are used by different protocols, and divide them into modules. When implemented, these modules should serve as a library that provides functions and structures commonly used by blockchain protocols, facilitating the development of the top-level modules used in the modular main function, which will be presented in the following section.
+The goal of this section was to identify essential functions that are used by different protocols and divide them into modules. When implemented, these modules should serve as a library that provides functions and structures commonly used by blockchain protocols, facilitating the development of the top-level modules used in the modular main function, which will be presented in the following section.
 
 
 To this end, the following modules were defined, using as reference the Bitcoin, Algorand and Ethereum protocols: \texttt{Network}, \texttt{Blocktree}, \texttt{ProofOfStake} and \texttt{ProofOfWork}.
@@ -111,7 +111,7 @@ The \texttt{ProofOfStake} module, defines operations to select committee members
 
 Finally, the \texttt{Network} module defines operations to send and receive messages, as well as compute network delays.
 
-The full module signatures can be found in the Appendix \ref{app:signatures}. All types are defined as abstract types in each module, to improve the readability of the signatures in this phase. Most of the types are intuitive, however it is worth delving deeper into the intended usage of the communication channels in the \texttt{Network} module.
+The full module signatures can be found in the Appendix \ref{app:signatures}. All types are defined as abstract types in each module, to improve the readability of the signatures in this phase. Most of the types are intuitive, however, it is worth delving deeper into the intended usage of the communication channels in the \texttt{Network} module.
 
 The \texttt{communication\_channels} type should be a set of multiple message channels, one for each type of message being exchanged in the network - one can expect, at the very least, one channel for blocks and another for transactions. The receive operations will then check the respective channel for new messages, and the \texttt{send\_message} operation can receive as an argument any message type, and through pattern matching the correct communication channel will be used.
 
@@ -131,7 +131,9 @@ The implementation of these communication channels could leverage, for example, 
 
 Using the paper \textit{"A Survey of Distributed Consensus Protocols for Blockchain Networks"} \cite{survey_bchain_networks} as reference, the \textit{functor} presented in Listing \ref{lst:main} was defined.
 
-In OCaml, \textit{functors} are functions that receive one or more modules as input arguments, and produce a new module as output. In this scenario, it allows us to define a single top-level function that can be used in all protocols by using different combinations of input modules, which we defined as being the modules that directly map the behavior of a protocol according to the five component framework.
+In OCaml, \textit{functors} are functions that receive one or more modules as input arguments and produce a new module as output. In this scenario, it allows us to define a single top-level function that can be used in all protocols by using different combinations of input modules, which we defined as being the modules that directly map the behavior of a protocol according to the five component framework.
+
+It is necessary that the modules must operate over the same data types, as specified in lines 2-8, however the behavior encapsulated in each module should be independent, allowing them to be easily exchanged.
 
 \lstset{language=caml, keywordstyle=\color{blue}, caption=Main Functor, label=lst:main}
 \begin{lstlisting}
@@ -175,7 +177,7 @@ module Main
 end
 \end{lstlisting}
 
-The arguments of the \textit{run} function are the state stored by each node. For now, that state is the following:
+The arguments of the \textit{run} function are the state stored by each node. For the moment, that state is the following:
 
 \begin{enumerate}
   \item \texttt{bc} - a reference to a blockchain or blocktree data structure.
@@ -187,7 +189,7 @@ The arguments of the \textit{run} function are the state stored by each node. Fo
 
 The recursive \textit{main} function is the main loop executed by each peer in the network.
 
-It starts by running one iteration of it's block proposal mechanism (lines 13-17). If that iteration succeeds, it must produce a block and an associated proof. The block gets added to the set of temporary blocks, and the \texttt{(block, proof)} pair is propagated to the peers.
+It starts by running one iteration of its block proposal mechanism (lines 13-17). If that iteration succeeds, it must produce a block and an associated proof. The block gets added to the set of temporary blocks, and the \texttt{(block, proof)} pair is propagated to the peers.
 
 Next, it attempts to receive a transaction (lines 18-21), if there is one to be received, and adds it to the set of transactions.
 
@@ -199,11 +201,11 @@ A similar procedure is done for checkpoint finalization (line 33), which receive
 
 \vspace{0.75cm}
 
-Note that this \textit{functor} is a good foundation, however it must be further developed. At the moment it has some limitations, such as:
+Note that this \textit{functor} is a good foundation, however, it must be further developed. At the moment it has some limitations, such as:
 
 \begin{enumerate}
     \item some parameters must be abstracted as different protocols may receive different inputs. For example, the \texttt{propose\_block} operation must receive a \textit{nonce} in proof of work, and a \textit{round} in proof of stake. A possible solution might be including an abstract type that will contain the necessary arguments for each operation, and store those arguments in the node's state.
-    \item transactions and blocks could be received continuously, until there are none left in the channels to be received.
+    \item transactions and blocks could be received continuously until there are none left in the channels to be received.
     \item the incentive mechanism module is currently not being used.
 \end{enumerate}
 
@@ -213,3 +215,13 @@ Note that this \textit{functor} is a good foundation, however it must be further
 
 As mentioned, to use the presented \textit{functor}, one must implement the required input modules, which were defined according to the Five Component Framework. The Five Component Framework was presented in more detail in Chapter \ref{cha:background}, as well as an explanation of the behavior each of the five components encompasses in the Bitcoin, Algorand and Ethereum protocols.
 
+
+
+
+\section{Results}
+
+The previous two sections presented an overview of the practical work that was done in preparation for the thesis.
+
+The implementation of the different consensus protocols in Rust lead to a better understanding of consensus protocols and what is required to transform their pseudo-code descriptions into working implementations. A large portion of each implementation wasn't specific to the behavior of the protocols themselves but rather the underlying mechanisms that are used to enable communication between peers. It was also seen that, although Multi-Decree Paxos and Raft may seem very different in their textual descriptions, their implementations share a lot of similarities.
+
+The definition of the module signatures for essential auxiliary functions in blockchain protocols, as well as the main \textit{functor} in OCaml, set an extensible foundation upon which the simulation environment will be built, even though some limitations are still present.

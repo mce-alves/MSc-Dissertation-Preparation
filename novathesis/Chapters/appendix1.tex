@@ -11,7 +11,7 @@
 \chapter{OCaml Module Signatures}
 \label{app:signatures}
 
-\lstset{language=caml, keywordstyle=\color{blue}, caption=Network Module, label=lst:main}
+\lstset{language=caml, keywordstyle=\color{blue}, caption=Network Module, label=lst:m1}
 \begin{lstlisting}
 module type Network = sig
     (* the type of blocks included in the messages *)
@@ -44,7 +44,7 @@ module type Network = sig
 end
 \end{lstlisting}
 
-\lstset{language=caml, keywordstyle=\color{blue}, caption=Blocktree Module, label=lst:main}
+\lstset{language=caml, keywordstyle=\color{blue}, caption=Blocktree Module, label=lst:m2}
 \begin{lstlisting}
     module type Blocktree = sig
     (* the type of the blocks in the block tree *)
@@ -76,7 +76,7 @@ end
 end
 \end{lstlisting}
 
-\lstset{language=caml, keywordstyle=\color{blue}, caption=Proof of Work Module, label=lst:main}
+\lstset{language=caml, keywordstyle=\color{blue}, caption=Proof of Work Module, label=lst:m3}
 \begin{lstlisting}
 module type ProofOfWork = sig
     (* the type of the block's implementation *)
@@ -100,7 +100,7 @@ module type ProofOfWork = sig
 end
 \end{lstlisting}
 
-\lstset{language=caml, keywordstyle=\color{blue}, caption=Proof of Stake Module, label=lst:main}
+\lstset{language=caml, keywordstyle=\color{blue}, caption=Proof of Stake Module, label=lst:m4}
 \begin{lstlisting}
 module type ProofOfStake = sig
     (* the type of the blocktree/blockchain *)

@@ -13,7 +13,7 @@
 
 \glsresetall
 
-This chapter presents core concepts regarding consensus protocols, blockchain protocols and simulation. It also describes three consensus and blockchain protocols that will be further addressed in chapter 4.
+This chapter presents core concepts regarding consensus protocols, blockchain protocols, and simulation. It also describes three consensus and blockchain protocols that will be further addressed in chapter 4.
 
 
 \section{Consensus Protocols}
@@ -28,10 +28,12 @@ It is expected that a consensus protocol ensures the following properties \cite{
 \begin{enumerate}
   \item Termination - eventually, every correct process accepts a value.
   \item Agreement - all correct processes accept the same value.
-  \item Integrity - if all correct processes proposed the same value, then all correct processes accept that same value. A stronger integrity constraint for Byzantine fault tolerant consensus is: if a correct process accepts a value v, then v must have been previously proposed by some correct process.
+  \item Integrity - if all correct processes proposed the same value, then all correct processes accept that same value. A stronger integrity constraint for Byzantine fault-tolerant consensus is: if a correct process accepts a value v, then v must have been previously proposed by some correct process.
 \end{enumerate}
 
-We will now present Single-Decree Paxos \cite{paxos_made_simple}, that allows different machines to agree on a single value out of several proposed values. Then we will present  Raft \cite{paxos_vs_raft}\cite{raft} and Multi-Decree Paxos \cite{paxos_vs_raft}\cite{paxos_complex}\cite{paxos_live}, which introduce the concept of a replicated log of operations and ensure that all correct processes will execute these operations in the same order on the same state.
+We will now present Single-Decree Paxos \cite{paxos_made_simple}, which allows different machines to agree on a single value out of several proposed values. Then we will present  Raft \cite{paxos_vs_raft}\cite{raft} and Multi-Decree Paxos \cite{paxos_vs_raft}\cite{paxos_complex}\cite{paxos_live}, which introduce the concept of a replicated log of operations and ensure that all correct processes will execute these operations in the same order on the same state.
+
+Chapter \ref{cha:use_cases} further elaborates on aspects related to the implementation of these protocols.
 
 
 \subsection{Single-Decree Paxos}
@@ -42,11 +44,11 @@ When a peer receives a value from a client, it begins behaving like a Proposer. 
 
 \begin{enumerate}
   \item Sends a \texttt{PREPARE} message to all the other peers, which contains the proposal number that it intends to use in a future proposal.
-  \item Waits for the responses to it’s \texttt{PREPARE} message, which are called \texttt{PROMISES}. Upon receiving a \texttt{PROMISE} from a majority of peers, the Proposer proceeds to send a \texttt{PROPOSE} message to all the peers - note that if any of the received \texttt{PROMISES} contained the information of an already accepted value, this Proposer will have to propose that same accepted value.
-  \item Finally, if the Proposer receives an \texttt{ACCEPT} response from a majority of peers, then it has achieved consensus on it’s proposal and can inform the Learners (implementation dependent) and the client.
+  \item Waits for the responses to its \texttt{PREPARE} message, which are called \texttt{PROMISES}. Upon receiving a \texttt{PROMISE} from a majority of peers, the Proposer proceeds to send a \texttt{PROPOSE} message to all the peers - note that if any of the received \texttt{PROMISES} contained the information of an already accepted value, this Proposer will have to propose that same accepted value.
+  \item Finally, if the Proposer receives an \texttt{ACCEPT} response from a majority of peers, then it has achieved consensus on its proposal and can inform the Learners (implementation dependent) and the client.
 \end{enumerate}
 
-An Acceptor keeps a record of the received \texttt{PREPARE} and \texttt{PROPOSE} messages, and whether or not a value was already accepted. It’s behavior consists in processing messages from Proposers and sending the appropriate responses.
+An Acceptor keeps a record of the received \texttt{PREPARE} and \texttt{PROPOSE} messages, and whether or not a value was already accepted. Its behavior consists of processing messages from Proposers and sending the appropriate responses.
 
 Upon receiving a \texttt{PREPARE} message, an Acceptor will respond in one of three ways \cite{paxos_made_simple}:
 
@@ -60,13 +62,13 @@ Upon receiving a \texttt{PROPOSE} message, an Acceptor will respond in one of tw
 
 \begin{enumerate}
   \item If it hasn’t accepted any proposals yet, and the proposal number is larger than or equal to the largest proposal number it has seen so far, the Acceptor will accept the value and will respond with an \texttt{ACCEPT} message.
-  \item If it has already accepted a value, or it has seen a larger proposal number, the Acceptor will respond with a \texttt{REJECT} message or simply ignore the proposal - implementation dependent.
+  \item If it has already accepted a value, or it has seen a larger proposal number, the Acceptor will respond with a \texttt{REJECT} message or simply ignore the proposal - depending on the implementation.
 \end{enumerate}
 
-Finally, the Learner role represents the entity that will “learn” the value for which consensus was reached. In real systems the Learner are, for example, databases. Therefore, in the articles that describe the protocol, there is very little information about the Learner’s behavior.
+Finally, the Learner role represents the entity that will “learn” the value for which consensus was reached. In real systems, the Learners are, for example, databases. Therefore, in the articles that describe the protocol, there is very little information about the Learner’s behavior.
 
 
-It is important to note that, in the presence of concurrent proposals, the Single-Decree Paxos protocol may not terminate as different proposers might send consecutive \texttt{PREPARE} messages with higher proposal numbers for an indefinite amount of time. However, it does guarantee that if consensus is reached, all Learner will “learn” that same agreed upon value.
+It is important to note that, in the presence of concurrent proposals, the Single-Decree Paxos protocol may not terminate as different proposers might send consecutive \texttt{PREPARE} messages with higher proposal numbers for an indefinite amount of time. However, it does guarantee that if consensus is reached, all Learners will “learn” that same agreed-upon value.
 
 
 
@@ -84,21 +86,21 @@ The protocol can be implemented using message exchange or RPCs (Remote Procedure
 
 The following are the descriptions of each role’s behavior, as presented in the official paper \cite{raft}:
 
-When a peer has the Follower role, it’s behavior is mostly based on the execution of RPCs, with a few exceptions.
+When a peer has the Follower role, its behavior is mostly based on the execution of RPCs, with a few exceptions.
 
 Upon receiving a client request, a Follower redirects that message to the current leader of the protocol.
 
 When a Candidate calls a \texttt{RequestVote} RPC on a Follower, the result will correspond to the Follower’s vote. This vote will be positive if the Candidate’s term and log entries are up-to-date, and the Follower hasn’t voted in favor of another candidate. Otherwise, the vote will be negative.
 
-A Leader can execute \texttt{AppendEntries} RPCs on all Followers, not only to send them new log entries, but also to inform them that there is an active Leader. The execution of this RPC on a Follower will succeed if the sent log entries are successfully appended to the Follower’s log. The execution fails if the Follower is missing some previous log entries or if it detects that the Leader is outdated - if the Leader’s term is smaller than the Follower’s term. If the RPC’s execution succeeds, the Follower will also compare it’s commit index to the Leader’s, apply the newly committed operations, if there are any, and the RPC’s result will include the index of the last entry in the Follower’s log.
+A Leader can execute \texttt{AppendEntries} RPCs on all Followers, not only to send them new log entries but also to inform them that there is an active Leader. The execution of this RPC on a Follower will succeed if the sent log entries are successfully appended to the Follower’s log. The execution fails if the Follower is missing some previous log entries or if it detects that the Leader is outdated - if the Leader’s term is smaller than the Follower’s term. If the RPC’s execution succeeds, the Follower will also compare its commit index to the Leader’s, apply the newly committed operations, if there are any, and the RPC’s result will include the index of the last entry in the Follower’s log.
 
 Finally, a Follower will change its role to Candidate when a \textit{heartbeat timeout} occurs - when the Follower hasn’t received a message from the valid Leader recently.
 
 \vspace{0.5cm}
 
-When a peer changes its role to Candidate, the election process begins. The Candidate will increment its current term, and will execute \texttt{RequestVote} RPCs on every other peer.
+When a peer changes its role to Candidate, the election process begins. The Candidate will increment its current term and will execute \texttt{RequestVote} RPCs on every other peer.
 
-Upon receiving a negative result from a \texttt{RequestVote} RPC, the Candidate will check if that follower’s term is larger than his current term and if that is true, then the Candidate will revert its role back to Follower since there is another peer more up-to-date than him.
+Upon receiving a negative result from a \texttt{RequestVote} RPC, the Candidate will check if that follower’s term is larger than his current term and if that is true, then the Candidate will revert its role to Follower since there is another peer more up-to-date than him.
 
 If the Candidate receives a majority of positive results from the \texttt{RequestVote} RPCs, the Candidate will change its role to Leader.
 
@@ -106,7 +108,7 @@ If the Candidate receives a majority of positive results from the \texttt{Reques
 
 The Leader is in charge of executing \texttt{AppendEntries} RPCs on all peers periodically, regardless of whether or not there are new entries in its log, because these messages also serve the purpose of informing the peers that the Leader did not fail.
 
-When an \texttt{AppendEntries} RPC is unsuccessful, the Leader will decrement the index of the next message that needs to be sent to that peer, to try and solve the conflict. Worst case scenario, the conflict is at the start of the log and therefore the request will only succeed when the Leader decrements the index to be sent to 0.
+When an \texttt{AppendEntries} RPC is unsuccessful, the Leader will decrement the index of the next message that needs to be sent to that peer, to try and solve the conflict. Worst case scenario, the conflict is at the start of the log, and therefore the request will only succeed when the Leader decrements the index to be sent to 0.
 
 Every time an \texttt{AppendEntries} RPC is successful, the Leader will check what is the latest entry that it can commit, which will be the entry with the largest index that is replicated in the log of a majority of peers.
 
@@ -114,7 +116,7 @@ Upon receiving any message that contains a term larger than its own, the Leader 
 
 \vspace{0.5cm}
 
-The Raft protocol guarantees that peers will reach a consensus on the order of the entries in the log and execute those operations in the same order, however it does not guarantee that all entries will be added to the log, as some might get lost during leader failures.
+The Raft protocol guarantees that peers will reach a consensus on the order of the entries in the log and execute those operations in the same order, however, it does not guarantee that all entries will be added to the log, as some might get lost during leader failures.
 
 
 
@@ -128,7 +130,7 @@ The state kept by each peer is very similar to the state kept in Single-Decree P
 
 At the start of the protocol, one peer is elected to act as the \textit{coordinator} (also known as \textit{leader} or \textit{distinguished proposer}). This election can be done through one round of Single-Decree Paxos, where a peer generates a new sequence number and sends a \texttt{PREPARE} message to the remaining peers. If he receives a majority of valid \texttt{PROMISES} then he can start acting as the coordinator. Note that to ensure no out-of-date peers, the \texttt{PREPARE} message must include the peer’s log, which the leader then merges with its own log.
 
-The coordinator can then receive requests from clients or from the other peers, selecting one of those entries to be broadcasted. This is the \texttt{PROPOSE} message sent in Single-Decree Paxos. This message will now also include the coordinator’s log, so that peers that failed in a previous iteration of the protocol may catch up to the current state of the system.
+The coordinator can then receive requests from clients or from other peers, selecting one of those entries to be broadcasted. This is the \texttt{PROPOSE} message sent in Single-Decree Paxos. This message will now also include the coordinator’s log, so that peers that failed in a previous iteration of the protocol may catch up to the current state of the system.
 
 Once a majority of replicas acknowledge the coordinator - \texttt{ACCEPT} his proposal - consensus is reached, and the coordinator proceeds to send a \texttt{COMMIT} message to notify the replicas.
 
@@ -138,7 +140,7 @@ The previously mentioned steps are then repeated. In practice, the election step
 
 \vspace{0.5cm}
 
-Like Raft, Multi-Decree Paxos guarantees that peers will reach a consensus on the order of the entries in the log, but in the occasion of a coordinator failure some client requests may not be added to the log.
+Like Raft, Multi-Decree Paxos guarantees that peers will reach a consensus on the order of the entries in the log, but in the occasion of a coordinator failure, some client requests may not be added to the log.
 
 
 
@@ -151,7 +153,7 @@ Blockchain, as the name suggests, is an append-only data structure composed of a
 
 A blockchain protocol is the composition of steps executed by each node in a network to maintain a replicated copy of a blockchain among multiple nodes. 
 
-Blockchain protocols often function under the assumption that nodes do not necessarily trust each other, however they still need to reach a consensus on the ordering of the blocks in the blockchain.
+Blockchain protocols often function under the assumption that nodes do not necessarily trust each other, however, they still need to reach a consensus on the ordering of the blocks in the blockchain.
 
 The object of the consensus is a chain of blocks, as depicted in figure x. However, in practice, it is not uncommon for the data structure stored by each node to be a tree of blocks (simplified in figure \ref{fig:tree}) as forks may occur, which will be further explained in later sections.
 
@@ -174,7 +176,7 @@ There are two main types of blockchain networks, \textit{permissioned} and \text
 
 A permissioned blockchain, also referred to as a private blockchain, is a closed network where only authorized nodes can join and participate in the blockchain protocol. This does however require a centralized authority that regulates who can join the network. An example of a permissioned blockchain is Hyperledger Fabric \cite{hyperledger_fabric}.
 
-A permissionless blockchain, also referred to as a public blockchain, allows any node to join the network and execute the blockchain protocol, and is therefore a fully decentralized environment. It is common for these blockchains to employ some type of incentive mechanism to strengthen its security. Some examples of permissionless blockchains are Bitcoin \cite{bitcoin}, Ethereum \cite{ethereum_whitepaper} and Algorand \cite{algorand_scale_byz_agreements}.
+A permissionless blockchain, also referred to as a public blockchain, allows any node to join the network and execute the blockchain protocol, and is, therefore, a fully decentralized environment. It is common for these blockchains to employ some type of incentive mechanism to strengthen their security. Some examples of permissionless blockchains are Bitcoin \cite{bitcoin}, Ethereum \cite{ethereum_whitepaper} and Algorand \cite{algorand_scale_byz_agreements}.
 
 Several permissionless blockchains can also execute on permissioned environments, often more efficiently and securely.
 
@@ -182,15 +184,15 @@ Several permissionless blockchains can also execute on permissioned environments
 
 To further explain blockchain protocols, we will first describe the five-component framework presented in “A Survey of Distributed Consensus Protocols for Blockchain Networks” \cite{survey_bchain_networks}, as it is the abstraction mechanism that we adopted to specify these protocols.
 
-The authors identify five core components of blockchain protocols: block proposal, information propagation, block validation, block finalization and incentive mechanism.
+The authors identify five core components of blockchain protocols: block proposal, information propagation, block validation, block finalization, and incentive mechanism.
 
 \vspace{0.5cm}
 
 \textbf{Block Proposal}
 
-The block proposal component encompasses how each node generates a new block, and the corresponding proof of generation.
+The block proposal component encompasses how each node generates a new block and the corresponding proof of generation.
 
-Examples of block proposal mechanisms include proof of work (PoW), proof of stake (PoS) and proof of authority (PoA), among others.
+Examples of block proposal mechanisms include proof of work (PoW), proof of stake (PoS), and proof of authority (PoA), among others.
 
 \vspace{0.25cm}
 
@@ -199,7 +201,7 @@ Examples of block proposal mechanisms include proof of work (PoW), proof of stak
 
 The information propagation component relates to how nodes communicate with each other in the network for sending and receiving transactions, blocks, etc.
 
-Gossiping, broadcast and flooding are examples of information propagation mechanisms.
+Gossiping, broadcast, and flooding are examples of information propagation mechanisms.
 
 \vspace{0.25cm}
 
@@ -207,7 +209,7 @@ Gossiping, broadcast and flooding are examples of information propagation mechan
 
 Block validation includes all operations related to verifying the validity of a propagated block, by checking the corresponding generation proof and the validity of the block’s content.
 
-For example, in proof of work protocols, verifying the generation proof of a block usually consists in verifying the block’s hash and the chain it extends, whereas in proof of stake protocols, verifying the generation proof consists in checking if the node that proposed the block is in fact eligible to do so.
+For example, in proof of work protocols, verifying the generation proof of a block usually consists of verifying the block’s hash and the chain it extends, whereas in proof of stake protocols, verifying the generation proof consists in checking if the node that proposed the block is, in fact, eligible to do so.
 
 \vspace{0.25cm}
 
@@ -229,7 +231,7 @@ The incentive mechanism includes the protocol’s functionalities that promote t
 
 \subsection{Bitcoin}
 
-Bitcoin \cite{bitcoin} is a permissionless blockchain network that manages a decentralized digital currency (which is also referred to as bitcoin), allowing online payments to be sent directly between two entities, without the need for a third party central authority. Honest peers work together to make the system trustworthy by validating transactions, creating blocks through proof of work and appending them to the blockchain.
+Bitcoin \cite{bitcoin} is a permissionless blockchain network that manages a decentralized digital currency (which is also referred to as bitcoin), allowing online payments to be sent directly between two entities, without the need for a third party central authority. Honest peers work together to make the system trustworthy by validating transactions, creating blocks through proof of work, and appending them to the blockchain.
 
 The following is a description, divided according to the five component framework \cite{survey_bchain_networks}, of the protocol executed in the bitcoin network \cite{bitcoin} \cite{info_propagation_bitcoin}.
 
@@ -238,7 +240,7 @@ The following is a description, divided according to the five component framewor
 
 \textbf{Block Proposal}
 
-Transactions are broadcasted through the network. Nodes running mining software validate these transactions, pack them into a block and proceed to compute a nonce that, when hashed together with the block’s header, produces a hash that begins with a predefined number of zero bits (the amount of zero bits is periodically adjusted to allow an average of 6 new blocks per hour). This nonce is the proof object of this protocol and it is hard to compute, but rather simple to verify.
+Transactions are broadcasted through the network. Nodes running mining software validate these transactions, pack them into a block and proceed to compute a nonce that, when hashed together with the block’s header, produces a hash that begins with a predefined number of zero bits (the number of zero bits is periodically adjusted to allow an average of 6 new blocks per hour). This nonce is the proof object of this protocol and it is hard to compute, but rather simple to verify.
 
 The described process is referred to as proof of work.
 
@@ -247,9 +249,9 @@ The described process is referred to as proof of work.
 
 \textbf{Information Propagation}
 
-Each block or transaction has an origin node where it is first created. After creation, this node immediately sends the corresponding data to its neighbours which is then propagated to the entire network via the gossip protocol.
+Each block or transaction has an origin node where it is first created. After creation, this node immediately sends the corresponding data to its neighbors which is then propagated to the entire network via the gossip protocol.
 
-In order to avoid sending transactions and blocks to nodes that have already received them from others, they are not forwarded directly. Once  a node verifies a received block or transaction, it sends an inv message to neighbour nodes. This message contains a set of transaction and block hashes that the node has verified, and upon receiving an inv message other nodes can request transactions and blocks that they don’t have by sending a getdata message to the sender of the inv message.
+To avoid sending transactions and blocks to nodes that have already received them from others, they are not forwarded directly. Once a node verifies a received block or transaction, it sends an \textit{inv} message to neighbor nodes. This message contains a set of transaction and block hashes that the node has verified, and upon receiving an \textit{inv} message other nodes can request transactions and blocks that they don’t have by sending a \textit{getdata} message to the sender of the \textit{inv} message.
 
 \vspace{0.25cm}
 
@@ -261,23 +263,23 @@ Upon receiving a block, a node validates the transactions and the proof associat
 
 \textbf{Block Finalization}
 
-Nodes consider the longest chain in the blocktree to be the correct one, and will work towards extending it. Forks may occur if two nodes simultaneously broadcast different blocks that extend the same chain, leading different subsets of nodes to extend different chains. Eventually this fork will be solved when one chain becomes longer than the other and all nodes will extend a common chain once again.
+Nodes consider the longest chain in the blocktree to be the correct one and will work towards extending it. Forks may occur if two nodes simultaneously broadcast different blocks that extend the same chain, leading different subsets of nodes to extend different chains. Eventually, this fork will be solved when one chain becomes longer than the other and all nodes will extend a common chain once again.
 
-When a block is sufficiently deep in the chain, it can be considered final with a high probability, since the more blocks are built on the chain that extend it, the more work would be required to alter the chain.
+When a block is sufficiently deep in the chain, it can be considered final with a high probability, since the more blocks are built on the chain that extends it, the more work would be required to alter the chain.
 
 
 \vspace{0.25cm}
 
 \textbf{Incentive Mechanism}
 
-A node is incentivized to mine a valid block, as he not only receives transaction fees from the transactions that get included in the block, but also a fixed amount of bitcoins as a reward for the creation of the block itself which is included in the block as a special transaction that creates those bitcoins.
+A node is incentivized to mine a valid block, as he not only receives transaction fees from the transactions that get included in the block but also a fixed amount of bitcoins as a reward for the creation of the block itself which is included in the block as a special transaction that creates those bitcoins.
 
 
 
 
 \subsection{Algorand}
 
-Algorand \cite{algorand_scale_byz_agreements} \cite{algorand_agreement} is a blockchain network that manages a cryptocurrency, designed to confirm transactions on the order of one minute. At its core, Algorand uses a Byzantine Fault Tolerant agreement protocol, that is not only scalable to many users, but also allows the network to reach consensus on a new block with low latency and with a low risk of creating forks. The protocol also satisfies user replaceability, allowing for a different subset of users to participate in different steps of the agreement protocol, providing tolerance against targeted denial of service attacks.
+Algorand \cite{algorand_scale_byz_agreements} \cite{algorand_agreement} is a blockchain network that manages a cryptocurrency, designed to confirm transactions on the order of one minute. At its core, Algorand uses a Byzantine Fault Tolerant agreement protocol, that is not only scalable to many users but also allows the network to reach consensus on a new block with low latency and with a low risk of creating forks. The protocol also satisfies user replaceability, allowing for a different subset of users to participate in different steps of the agreement protocol, providing tolerance against targeted denial of service attacks.
 
 The following is a description, divided according to the five component framework \cite{survey_bchain_networks}, of the protocol executed in the algorand network \cite{algorand_scale_byz_agreements} \cite{algorand_agreement}.
 
@@ -288,7 +290,7 @@ The following is a description, divided according to the five component framewor
 
 Nodes collect pending transactions that they learn about into a block, in case they are chosen to propose the next block in the chain.
 
-The nodes then proceed to execute cryptographic sortition that allows them to privately check if they are selected to propose a block. Cryptographic sortition ensures that only a small set of nodes are selected at random, with consideration to their weight (amount of money the node holds in the system). If a node is selected to propose a block, cryptographic sortition also produces a priority (used as tie breaker when several nodes are selected) and a proof of the node’s ability to propose and of its priority.
+The nodes then proceed to execute cryptographic sortition that allows them to privately check if they are selected to propose a block. Cryptographic sortition ensures that only a small set of nodes are selected at random, with consideration to their weight (amount of money the node holds in the system). If a node is selected to propose a block, cryptographic sortition also produces a priority (used as a tie-breaker when several nodes are selected) and proof of the node’s ability to propose and of its priority.
 
 The described process of selecting a proposer randomly, based on its weight (stake), is referred to as proof of stake.
 
@@ -298,36 +300,36 @@ The described process of selecting a proposer randomly, based on its weight (sta
 
 \textbf{Information Propagation}
 
-Similarly to Bitcoin, new transactions are propagated through the network via the gossip protocol, as well as the messages and blocks sent during the agreement protocol.
+Similar to Bitcoin, new transactions are propagated through the network via the gossip protocol, as well as the messages and blocks sent during the agreement protocol.
 
-Algorand avoids forward loops by not allowing nodes to forward the same message twice, and mitigates pollution attacks by selecting neighbour nodes based on how much money they hold and each node only relays messages after validating them.
+Algorand avoids forward loops by not allowing nodes to forward the same message twice, and mitigates pollution attacks by selecting neighbor nodes based on how much money they hold and each node only relays messages after validating them.
 
 
 \vspace{0.25cm}
 
 \textbf{Block Validation}
 
-Upon receiving a block, a node will validate the transactions contained in the block, and will perform a proposer eligibility check to ensure that the node that sent the block was indeed selected to do so.
+Upon receiving a block, a node will validate the transactions contained in the block and will perform a proposer eligibility check to ensure that the node that sent the block was indeed selected to do so.
 
 \vspace{0.25cm}
 
 \textbf{Block Finalization}
 
-Cryptographic sortition may select multiple nodes to propose a block in a given round. To reach consensus on a single block to be appended to the chain, the agreement protocol is executed.
+Cryptographic sortition may select multiple nodes to propose a block in a given round. To reach a consensus on a single block to be appended to the chain, the agreement protocol is executed.
 
-Each node begins the agreement protocol with the block with highest associated priority they have received. Each node then executes the following steps \cite{algorand_agreement}, in sequential rounds (also referred to as periods), until consensus is reached:
+Each node begins the agreement protocol with the block with the highest associated priority they have received. Each node then executes the following steps \cite{algorand_agreement}, in sequential rounds (also referred to as periods), until a consensus is reached:
 
 \begin{enumerate}
   \item Execute cryptographic sortition to check whether the node was selected to be part of the committee for that period. Note that a new period begins when a node receives a majority of next-votes for some block in the previous period.
-  \item If the node was indeed selected to be part of the committee, it broadcasts (to all nodes, not just the ones that are part of the committee) the block with highest priority it has seen (if round=1) or the block that received the most next-votes in the previous round (if round>1), as well as the proof it belongs to the committee. This initially broadcasted block is known as the node’s starting block.
-  \item If the node sees a majority of next-votes for an empty block, it sends a soft-vote for the non-empty block with most votes that it has seen. Otherwise, if the node sees a majority of next-votes for one non-empty block, it sends a soft-vote for that same block.
+  \item If the node was indeed selected to be part of the committee, it broadcasts (to all nodes, not just the ones that are part of the committee) the block with the highest priority it has seen (if round=1) or the block that received the most next-votes in the previous round (if round>1), as well as the proof it belongs to the committee. This initially broadcasted block is known as the node’s starting block.
+  \item If the node sees a majority of next-votes for an empty block, it sends a soft-vote for the non-empty block with the most votes that it has seen. Otherwise, if the node sees a majority of next-votes for one non-empty block, it sends a soft-vote for that same block.
   \item If the node sees a majority of soft-votes for a non-empty block, then it sends a cert-vote for that block.
   \item If the node has certified some value in the current period, it sends a next-vote for that same value. Else, if it has seen a majority of next-votes for an empty block, it also sends a next-vote for an empty block. Otherwise, it sends a next-vote for its starting block.
   \item If the node sees a majority of soft-votes for a non-empty block, then it sends a next-vote for that block. Otherwise, if it sees a majority of next-votes for an empty block, and it has not certified a block in this period, it sends a next-vote for an empty block.
   \item If a node sees a majority of cert-votes for one block for the same period, it sets that block as the output of its agreement protocol. The set of those cert-votes form a certificate for the block, meaning consensus was reached and it can be appended to the blockchain. Otherwise, a new round of the agreement protocol begins.
 \end{enumerate}
 
-Note that regardless of whether or not a node belongs to the committee, it keeps track of the messages (votes) exchanged by the committee members. This is important because it allows committee members to be replaced every period, while maintaining the progress achieved in previous periods which helps protect the network against targeted denial of service attacks.
+Note that regardless of whether or not a node belongs to the committee, it keeps track of the messages (votes) exchanged by the committee members. This is important because it allows committee members to be replaced every period while maintaining the progress achieved in previous periods which helps protect the network against targeted denial of service attacks.
 
 
 \vspace{0.25cm}
@@ -344,7 +346,7 @@ Nodes receive a reward upon creating a block that gets successfully added to the
 
 Ethereum \cite{ethereum_whitepaper} \cite{ethereum_yellowpaper} is a permissionless blockchain network that manages a cryptocurrency, ether, and supports a built-in Turing-complete programming language that users can leverage to create smart contracts and decentralized applications that can specify state transition functions. The execution of these pieces of code can be triggered by messages and transactions.
 
-The following is a description, divided according to the five component framework \cite{survey_bchain_networks}, of the protocol executed in the Ethereum network \cite{ethereum_whitepaper} \cite{ethereum_yellowpaper}. For clarification, this is a description of the Ethereum 1 protocol. An overview of the key functionalities introduced by the currently deployed version of Ethereum 2 \cite{eth2} will be presented afterwards.
+The following is a description, divided according to the five component framework \cite{survey_bchain_networks}, of the protocol executed in the Ethereum network \cite{ethereum_whitepaper} \cite{ethereum_yellowpaper}. For clarification, this is a description of the Ethereum 1 protocol. An overview of the key functionalities introduced by the currently deployed version of Ethereum 2 \cite{eth2} will be presented afterward.
 
 
 \vspace{0.5cm}
@@ -353,7 +355,7 @@ The following is a description, divided according to the five component framewor
 
 Miner nodes gather received transactions and pack them into a block. Since transactions may trigger state transition functions, it is necessary for the block to also include the most recent state - the state reached after the miner applied the transactions contained in the block, which may trigger contract code that changes the state.
 
-The miner also includes zero or more stale blocks, also referred to as orphan or uncle blocks, into the created block. The included uncle blocks must be different than all uncles included in the previous blocks that belong to the chain that is being extended.
+The miner also includes zero or more stale blocks, also referred to as orphan or uncle blocks, into the created block. The included uncle blocks must be different from all uncles included in the previous blocks that belong to the chain that is being extended.
 
 Finally, nodes execute a process similar to Bitcoin’s proof of work. The difference is that the resulting proof is a nonce that when hashed together with the block header and a dataset obtained by downloading the full blockchain, must be lower than a target value.
 
@@ -368,7 +370,7 @@ Ethereum nodes communicate using a gossip protocol. It is worth highlighting tha
 
 \textbf{Block Validation}
 
-When a node receives a block, it will start by verifying if it extends a valid chain. It will then validate the contained transactions, gas limit and block header, and finally will verify if the nonce generated is a valid proof of work.
+When a node receives a block, it will start by verifying if it extends a valid chain. It will then validate the contained transactions, gas limit, and block header, and finally will verify if the nonce generated is a valid proof of work.
 
 Then it will apply the transactions contained in the block. If any transaction returns an error or the total gas consumed exceeds the limit, the validation fails. Otherwise, if all transactions successfully terminate, it will check whether or not the state reached after their execution is the same as the one contained in the block.
 
@@ -399,24 +401,24 @@ Each node’s checkpoint tree also includes a vote count, where the votes are we
   \item If an ordered pair of checkpoints (a,b) has received 2/3 of weighted votes, it is called a supermajority link.
   \item A checkpoint a is justified if it is the checkpoint tree’s root, or if there is a supermajority link (b,a) such that b is justified.
   \item A checkpoint a becomes finalized if it is the checkpoint tree’s root, or if it is justified and there is a supermajority link (a,b) where b is a direct child of a.
-  \item Honest validators always cast votes to extend the chain with the chain with the highest justified checkpoint.
+  \item Honest validators always cast votes to extend the chain with the highest justified checkpoint.
 \end{enumerate}
 
-Once a checkpoint becomes finalized, all the blocks it extends not only in the checkpoint tree, but also in the overall block tree, can be considered final.
+Once a checkpoint becomes finalized, all the blocks it extends not only in the checkpoint tree but also in the overall block tree, can be considered final.
 
 \vspace{0.25cm}
 
 \textbf{Incentive Mechanism}
 
-Nodes get rewarded for successfully creating a block that gets appended to the main chain and for the associated transaction fees. Besides that, a node also is also rewarded for the creation of stale blocks that get included as uncles in blocks that extend the main chain.
+Nodes get rewarded for successfully creating a block that gets appended to the main chain and for the associated transaction fees. Besides that, a node is also rewarded for the creation of stale blocks that get included as uncles in blocks that extend the main chain.
 
 
 
 
 \section{Simulation}
 
-\textit{"Simulation is the imitation of the operations of a real-world process or system over time"} \cite{intro_simulation}. It is a crucial tool for solving problems and to study the behavior of real systems.
+\textit{"Simulation is the imitation of the operations of a real-world process or system over time"} \cite{intro_simulation}. It is a crucial tool for solving problems and studying the behavior of real systems.
 
-Discrete event simulation is a widely used simulation model where the state of the system is only updated at discrete points in time where the events occur. In this models it is common for a central mechanism to manage the system, progressively updating the simulated time and scheduling the execution of these events.
+Discrete event simulation is a widely used simulation model where the state of the system is only updated at discrete points in time where the events occur. In this model it is common for a central mechanism to manage the system, progressively updating the simulated time and scheduling the execution of these events.
 
-Overall, simulation offers several benefits \cite{intro_simulation} such as providing a controled environment to test specific scenarios, without the influence of external factors. It also provides users the ability to test the effects of system changes, before deploying those changes to production where any mistakes can have severe impacts, which is of upmost importance in blockchain systems since they often control financial transactions.
+Overall, simulation offers several benefits \cite{intro_simulation} such as providing a controlled environment to test specific scenarios, without the influence of external factors. It also provides users the ability to test the effects of system changes, before deploying those changes to production where any mistakes can have severe impacts, which is of utmost importance in blockchain systems since they often control financial transactions.
